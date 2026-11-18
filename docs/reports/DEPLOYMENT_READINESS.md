@@ -1,5 +1,9 @@
 # Deployment preparation results - 2026-11-18
 
+Later backend-only review results appear in the final section. Earlier counts and
+root-ignore/frontend behavior below are preserved as historical evidence, not
+the current file-filter specification; use the current deployment runbook.
+
 Status: prepared locally, **not deployed**. The chosen layout is two Vercel
 projects: frontend/ (static Vite) and backend/ (FastAPI index.py). Exact
 settings and owner steps are in [DEPLOYMENT.md](../guides/DEPLOYMENT.md). No
@@ -103,3 +107,45 @@ Run the real production npm build only after supplying its valid production
 variables. Do not migrate, seed or import as part of building or deploying. The
 earlier imported book remains in the existing database; deployment packaging
 needs none of its source files.
+
+## Backend-only follow-up - 2026-11-18
+
+The current official FastAPI and Python Runtime documentation confirms that
+`index.py`, `tool.vercel.entrypoint = "index:app"`, Python 3.13 selected by
+`.python-version`, and runtime dependencies from requirements.txt are supported.
+No entrypoint, application behavior, runtime dependency pin or backend/vercel.json
+change was necessary. Exact project settings and environment names are recorded
+in the [deployment runbook](../guides/DEPLOYMENT.md#environment-variables).
+
+The backend allowlist previously handled only project-relative paths; the shared
+root fallback permitted frontend inputs alone. Both now explicitly preserve the
+backend runtime files under either tested base while excluding book/editorial
+tooling, real environment files, certificates, local databases, tests, migrations
+and private inputs. The frontend-specific ignore file is unchanged. This is a
+local packaging correction, not a claim about the earlier Vercel filter internals.
+
+The package smoke helper also clears inherited Python module paths and asserts
+that imports come from the filtered copy. Network/database connection functions
+are blocked during the smoke check. It still tests hosted safety with VERCEL
+disabled, ensuring `index.py` applies the boundary independently.
+
+| Check                                                                                 | Result                                                                                                                    |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `node scripts/audit_deployment.mjs`                                                   | 4 backend path-base combinations and 4 existing frontend combinations passed; 21 backend/29 frontend input files retained |
+| `python scripts/check_backend_package.py`                                             | Isolated reduced-package import, hosted guards and health response passed; zero database connections                      |
+| `pytest tests/test_deployment_config.py tests/test_configuration.py -q` from backend/ | 27 passed; one existing TestClient dependency deprecation warning                                                         |
+| Linux CPython 3.13 runtime dependency dry-run                                         | 27 packages resolved to wheels; no pytest/Ruff/Alembic, zero installs                                                     |
+| Current official Vercel schema checks                                                 | Used framework, duration, exclusions and header fields passed; no whole-schema meta-validation claim                      |
+| Changed Python helper Ruff lint/format and JS syntax                                  | Passed                                                                                                                    |
+
+The SQLAlchemy engine remains lazy, with a one-connection pool, zero overflow,
+bounded timeouts and psycopg prepared statements disabled for the transaction
+pooler. No startup migration, seed or import exists. Supabase JWT verification
+uses the configured issuer and audience; legacy verification conditionally needs
+a public publishable/anon key. CORS is restricted to exact frontend HTTPS origins.
+Private lessons remain unpublished and hosted development access remains disabled.
+
+Remaining hosted checks: actual Vercel Linux execution/cold starts, pooler
+reachability/TLS, runtime-role privileges and new-origin integration. A successful
+offline health check proves none of those. No Supabase connection, role/grant/data
+change, Auth test, schema migration, commit, push or deployment was performed.

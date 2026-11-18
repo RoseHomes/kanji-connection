@@ -40,7 +40,7 @@ const rootRules = ignore().add(
   fs.readFileSync(path.join(root, ".vercelignore"), "utf8"),
 );
 require(rootRules.ignores("private/book.json") &&
-  rootRules.ignores("backend/app/main.py") &&
+  rootRules.ignores("backend/migrations/env.py") &&
   rootRules.ignores("docs/README.md"), "Unrelated repository inputs must be excluded");
 manifest.root_inputs_restricted = true;
 const requiredFrontendInputs = [
@@ -57,6 +57,21 @@ const protectedFrontendInputs = [
   "src/content.json", "src/Home.test.tsx", "src/test-setup.ts",
 ];
 let frontendPathBaseChecks = 0;
+let backendPathBaseChecks = 0;
+const requiredBackendInputs = [
+  ".vercelignore", "vercel.json", "index.py", "pyproject.toml",
+  ".python-version", "requirements.txt", "app/__init__.py", "app/main.py",
+  "app/config.py", "app/database.py", "app/auth.py", "app/learning_routes.py",
+];
+const protectedBackendInputs = [
+  ".env", ".env.production.example", "private/book.json", "reference/book.PDF",
+  "artifacts/test.json", "tests/test_api.py", "migrations/env.py", "requirements-dev.txt",
+  "requirements.lock.txt", "node_modules/test.js", "app/book_import.py", "app/book_extract.py",
+  "app/seed.py", "app/json_content.py", "app/editorial.py", "app/content_schema.py",
+  "app/thai_references.py", "app/source.json", "app/private/book.json",
+  "app/client.key", "app/client.crt", "app/local.sqlite3", "app/.env",
+  "app/__pycache__/main.pyc",
+];
 for (const project of ["frontend", "backend"]) {
   const base = path.join(root, project);
   const rules = ignore().add(
@@ -138,6 +153,19 @@ for (const project of ["frontend", "backend"]) {
         "/assets/missing.js",
       ), "API/assets must never become SPA HTML");
   } else {
+    for (const [label, matcher] of [["root", rootRules], ["backend", rules]]) {
+      for (const prefix of ["", "backend/"]) {
+        for (const name of requiredBackendInputs)
+          require(!matcher.ignores(prefix + name), `${label} ignore omits a required backend input`);
+        for (const name of protectedBackendInputs)
+          require(matcher.ignores(prefix + name), `${label} ignore permits a protected backend input`);
+        for (const name of included)
+          require(!matcher.ignores(prefix + name), `${label} ignore omits a backend runtime file`);
+        backendPathBaseChecks++;
+      }
+    }
+    for (const name of requiredBackendInputs)
+      require(included.includes(name), "Required backend input missing from upload manifest");
     require(config.functions["index.py"].excludeFiles.length <=
       256, "Function exclusion pattern exceeds platform limit");
     require(fs
@@ -171,5 +199,6 @@ console.log(
     backend_input_files: manifest.projects.backend.input_files.length,
     api_rewrites_checked: true,
     frontend_path_base_checks: frontendPathBaseChecks,
+    backend_path_base_checks: backendPathBaseChecks,
   }),
 );

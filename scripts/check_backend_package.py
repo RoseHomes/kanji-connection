@@ -35,6 +35,8 @@ def main():
                 "ENABLE_",
                 "EXPOSE_",
                 "TEST_DATABASE",
+                "PYTHONPATH",
+                "PYTHONHOME",
             )
         )
     }
@@ -52,11 +54,17 @@ def main():
         }
     )
     code = """
-import json, psycopg
+import json, psycopg, socket
+from pathlib import Path
 def deny(*args, **kwargs):
-    raise RuntimeError("Database connections forbidden in offline package smoke")
+    raise RuntimeError("Network/database connections forbidden in offline package smoke")
 psycopg.connect = deny
-from index import app
+socket.create_connection = deny
+import index
+from app import main as main_module
+assert Path(index.__file__).resolve() == Path("index.py").resolve()
+assert Path(main_module.__file__).resolve() == Path("app/main.py").resolve()
+app = index.app
 assert app.state.settings.vercel is True
 from fastapi.testclient import TestClient
 with TestClient(app) as client:

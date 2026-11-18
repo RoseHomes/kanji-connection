@@ -1,5 +1,5 @@
-# Frontend build inputs, with explicit project- and repository-relative paths.
-# Vercel Root Directory remains frontend; other repository inputs stay excluded.
+# Build/runtime inputs for the separate frontend and backend projects.
+# Explicit project- and repository-relative paths; protected inputs stay excluded.
 /*
 !/.vercelignore
 !/vercel.json
@@ -19,6 +19,29 @@
 !/frontend/tsconfig.json
 !/frontend/vite.config.ts
 !/frontend/src/
+!/index.py
+!/.python-version
+!/pyproject.toml
+!/requirements.txt
+!/app/
+!/backend/
+/backend/*
+!/backend/.vercelignore
+!/backend/vercel.json
+!/backend/index.py
+!/backend/.python-version
+!/backend/pyproject.toml
+!/backend/requirements.txt
+!/backend/app/
+**/app/book*.py
+**/app/content_schema.py
+**/app/editorial.py
+**/app/json_content.py
+**/app/thai_references.py
+**/app/seed*.py
+**/app/**/*.json
+**/__pycache__/
+**/*.pyc
 **/.env*
 **/private/
 **/reference/

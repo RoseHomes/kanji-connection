@@ -23,11 +23,12 @@ token.
 | Include files outside Root Directory | OFF                               | OFF                                           |
 
 Use the settings and vercel.json inside each project root. The repository-root
-.vercelignore and frontend/.vercelignore explicitly allow frontend build inputs
-under both project-relative and repository-relative paths. All other repository
-roots and protected inputs remain excluded. Root Directory must still be
-`frontend` or `backend`; deploying the workspace root is unsupported. The frontend
-project file takes precedence under Vercel's documented monorepo rules. These
+.vercelignore retains restricted frontend and backend inputs; each project's own
+ignore file allows only its build/runtime files. Both project files and the root
+fallback are checked under project-relative and repository-relative paths.
+Other repository roots and protected inputs remain excluded. Root Directory must
+still be `frontend` or `backend`; deploying the workspace root is unsupported.
+The project file takes precedence under Vercel's documented monorepo rules. These
 allowlists are verified offline against both path bases, not against a remote
 deployment. This does not establish which filtering path caused the earlier
 missing-manifest failure. Vercel documents
@@ -80,6 +81,22 @@ deployment command. Use `npm run dev` with the local API for the offline demo.
 
 Backend:
 
+Create a separate project from the same repository with Root Directory `backend`
+and preset **FastAPI**. Leave the Install Command, Build Command and Output
+Directory overrides unset: use Python framework defaults, not frontend npm
+commands or a manually started Uvicorn process. Keep "Include files outside Root
+Directory" OFF. Python is selected by backend/.python-version (`3.13`), and
+backend/pyproject.toml explicitly selects `index:app`. The existing
+backend/vercel.json applies the 30-second limit to `index.py` and preserves
+private/no-store response headers. The current official docs support this
+[FastAPI entrypoint](https://vercel.com/docs/frameworks/backend/fastapi#exporting-the-fastapi-application)
+and [Python runtime/dependency configuration](https://vercel.com/docs/functions/runtimes/python).
+
+Required application environment names are **CONTENT_SOURCE**, **DATABASE_URL**,
+**SUPABASE_URL** and **CORS_ORIGINS**. Set the explicit safety defaults below too.
+Use backend names without a VITE_ prefix and enter secrets only in Vercel's
+private environment UI. No real environment file belongs in the deployment.
+
 | Variable                      | Required setting                                            |
 | ----------------------------- | ----------------------------------------------------------- |
 | CONTENT_SOURCE                | database                                                    |
@@ -103,6 +120,15 @@ service-role/secret keys in either project. Optional SUPABASE_PUBLISHABLE_KEY on
 the backend is a PUBLIC key only, needed only by the existing legacy HS256
 verification fallback; asymmetric JWKS validation does not need it.
 
+Optional tuning names are **DATABASE_SSLMODE**, **DATABASE_SSLROOTCERT**,
+**DATABASE_CONNECT_TIMEOUT**, **DATABASE_STATEMENT_TIMEOUT_MS**,
+**DATABASE_POOL_TIMEOUT** and **SUPABASE_JWT_AUDIENCE**. Vercel supplies **VERCEL**;
+the entrypoint also forces hosted safety if that system variable is unavailable.
+Keep **EXPOSE_SAMPLES=false**, **DEVELOPMENT_USER_IDS=[]** and
+**ENABLE_USER_WRITES=false**. The last setting intentionally blocks progress/quiz
+writes until a separate authorization to enable hosted writes; it is not an Auth
+configuration error.
+
 Pool size remains one per function process, zero overflow, bounded wait and
 prepared statements disabled. No durable disk, background worker, startup schema
 operation or book JSON is required. DATABASE_SSLMODE=require encrypts but does
@@ -117,6 +143,14 @@ sample exposure, migration credentials, placeholders, missing settings and wrong
 pooler ports. Private access also remains disabled inside Learning even if
 settings are unsafely copied later. Both Production and Preview deny the local
 development content bypass.
+
+The default sample content mode is unsuitable for this entrypoint and is rejected.
+Invalid URLs, malformed JSON CORS lists and missing production settings fail import
+before requests can be served. Import and lifespan startup do not query Supabase,
+download JWKS, import the book, run migrations or seed content. Check
+`/api/v1/health` after an approved deployment; `/` has no route and normally returns 404. A successful health response says the database is configured, not connected
+or privilege-verified. Linux function execution, live pooler/TLS access and the
+runtime-role grants still require an approved hosted verification.
 
 ## Routing, CORS and Auth callback
 

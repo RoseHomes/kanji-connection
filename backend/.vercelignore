@@ -1,4 +1,5 @@
-# Runtime-only upload. Migration, seed, extraction and test code remain local.
+# Runtime-only inputs, with project- and repository-relative paths.
+# Migration, seed, extraction and test code remain local.
 /*
 !/.vercelignore
 !/vercel.json
@@ -7,22 +8,41 @@
 !/.python-version
 !/requirements.txt
 !/app/
-/app/book*.py
-/app/content_schema.py
-/app/editorial.py
-/app/json_content.py
-/app/thai_references.py
-/app/seed*.py
-/app/**/*.json
+!/backend/
+/backend/*
+!/backend/.vercelignore
+!/backend/vercel.json
+!/backend/index.py
+!/backend/pyproject.toml
+!/backend/.python-version
+!/backend/requirements.txt
+!/backend/app/
+**/app/book*.py
+**/app/content_schema.py
+**/app/editorial.py
+**/app/json_content.py
+**/app/thai_references.py
+**/app/seed*.py
+**/app/**/*.json
 **/.env*
 **/private/
 **/reference/
 **/artifacts/
 **/__pycache__/
 **/*.pyc
-**/*.pdf
+**/*.[pP][dD][fF]
 **/*.pem
 **/*.key
 **/*.p12
 **/*.pfx
+**/*.crt
+**/*.cer
+**/*.der
+**/*.jks
+**/*.p8
+**/*.keystore
 **/*.dpapi
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/credentials.json
