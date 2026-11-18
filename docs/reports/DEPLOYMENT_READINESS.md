@@ -1,8 +1,9 @@
 # Deployment preparation results - 2026-11-18
 
-Later backend-only review results appear in the final section. Earlier counts and
-root-ignore/frontend behavior below are preserved as historical evidence, not
-the current file-filter specification; use the current deployment runbook.
+Later backend reviews and the uv dependency correction appear in the final sections.
+Earlier counts, root-ignore/frontend behavior and requirements-only dependency
+checks are preserved as historical evidence, not proof of the current Vercel
+installation path; use the current deployment runbook.
 
 Status: prepared locally, **not deployed**. The chosen layout is two Vercel
 projects: frontend/ (static Vite) and backend/ (FastAPI index.py). Exact
@@ -149,3 +150,37 @@ Remaining hosted checks: actual Vercel Linux execution/cold starts, pooler
 reachability/TLS, runtime-role privileges and new-origin integration. A successful
 offline health check proves none of those. No Supabase connection, role/grant/data
 change, Auth test, schema migration, commit, push or deployment was performed.
+
+## uv runtime dependency correction - 2026-11-18
+
+Verified hosted evidence identified Python 3.13, uv 0.13.5 and selection of
+pyproject.toml, followed by a runtime `ModuleNotFoundError` for FastAPI. That file
+contained tool settings and the entrypoint but no `[project.dependencies]`.
+The eight runtime pins existed only in requirements.txt. The selected TOML
+manifest did not declare them; installing the sibling text file locally had
+masked this difference. Earlier requirements-based checks did not verify the
+installer path actually selected by Vercel.
+
+Added standard project metadata and all eight unchanged runtime requirements to
+backend/pyproject.toml, including the Psycopg binary and PyJWT cryptography extras.
+Python remains constrained to 3.13. Tool configuration, `index:app`,
+requirements.txt, Vercel settings, application functionality and private inputs
+are unchanged. No build-system or open-source license was added.
+
+| Fresh-environment verification                                                  | Result                                                                                                                |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Original TOML, `uv pip install -r pyproject.toml` using uv 0.13.5               | Returned success, but entrypoint import reproduced missing `fastapi`                                                  |
+| Corrected TOML, `uv lock` then `uv sync --locked --no-dev --no-install-project` | Installed 27 distributions into a fresh Python 3.13 environment                                                       |
+| `uv pip check`                                                                  | Passed                                                                                                                |
+| Direct runtime imports                                                          | FastAPI, Uvicorn, Pydantic, pydantic-settings, SQLAlchemy, Psycopg, PyJWT, HTTPX and cryptography passed              |
+| Binary/crypto extras                                                            | Psycopg binary implementation and RS256/ES256 support present                                                         |
+| `app.main`, `index:app`, hosted health                                          | Passed from the filtered package with network/database access blocked                                                 |
+| Development packages                                                            | pytest, Alembic and Ruff absent from the fresh runtime environment                                                    |
+| Focused deployment tests                                                        | 17 passed, including new manifest-parity and import-coverage regressions; one existing TestClient deprecation warning |
+
+The clean environment used the same uv version as the reported Vercel build;
+execution was on local Windows Python 3.13, not Vercel Linux. Temporary uv tools,
+environments, generated lockfiles and logs remain in ignored private audit storage.
+No uv.lock was generated in backend/ and no application environment file was copied.
+Live hosted execution and database connectivity remain unverified. No commit,
+push, deployment, Supabase access or schema/content modification was performed.

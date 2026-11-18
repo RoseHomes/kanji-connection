@@ -16,7 +16,7 @@ token.
 | ------------------------------------ | --------------------------------- | --------------------------------------------- |
 | Root Directory                       | `frontend`                        | `backend`                                     |
 | Framework preset                     | Vite                              | FastAPI                                       |
-| Install                              | `npm ci --include=dev`            | FastAPI default using `requirements.txt`      |
+| Install                              | `npm ci --include=dev`            | FastAPI default using `pyproject.toml`        |
 | Build                                | `npm run build`                   | FastAPI default; no migration/seed build hook |
 | Output                               | `dist`                            | Leave unset; `index.py` exports ASGI `app`    |
 | Runtime                              | Node 22.x, pinned in package/lock | Python 3.13, pinned in `.python-version`      |
@@ -91,6 +91,15 @@ backend/vercel.json applies the 30-second limit to `index.py` and preserves
 private/no-store response headers. The current official docs support this
 [FastAPI entrypoint](https://vercel.com/docs/frameworks/backend/fastapi#exporting-the-fastapi-application)
 and [Python runtime/dependency configuration](https://vercel.com/docs/functions/runtimes/python).
+
+Vercel selects backend/pyproject.toml as the runtime dependency manifest.
+Its `[project.dependencies]` lists all eight existing runtime pins, including
+`psycopg[binary]` and `PyJWT[crypto]`; `requires-python` matches the 3.13 runtime.
+The sibling requirements.txt is retained for existing local/CI commands and must
+stay equivalent. The deployment tests check parity, required extras and coverage
+of application third-party imports. Do not rely on installing requirements.txt
+locally as proof that Vercel's selected manifest installs the same packages.
+No custom install override or production development dependencies are required.
 
 Required application environment names are **CONTENT_SOURCE**, **DATABASE_URL**,
 **SUPABASE_URL** and **CORS_ORIGINS**. Set the explicit safety defaults below too.

@@ -1,15 +1,67 @@
 """Deployment-only guards; synthetic configuration, no network or live Auth/data."""
 
+import ast
+import sys
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
+import tomllib
 from fastapi.testclient import TestClient
+from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
+from packaging.utils import canonicalize_name
 from pydantic import ValidationError
 
 from app.auth import Identity
 from app.config import Settings
 from app.learning import Learning
 from app.main import create_app
+
+
+def test_deployed_pyproject_dependencies_match_runtime_requirements():
+    backend = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((backend / "pyproject.toml").read_text("utf-8"))["project"]
+
+    def normalized(line):
+        req = Requirement(line)
+        return (
+            canonicalize_name(req.name),
+            frozenset(req.extras),
+            str(req.specifier),
+            str(req.marker) if req.marker else None,
+        )
+
+    deployed = {normalized(line) for line in project["dependencies"]}
+    requirements = {
+        normalized(line.strip())
+        for line in (backend / "requirements.txt").read_text("utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    assert deployed and deployed == requirements
+    assert len(deployed) == len(project["dependencies"])
+    assert (backend / ".python-version").read_text().strip() in SpecifierSet(
+        project["requires-python"]
+    )
+    assert "binary" in next(extras for name, extras, _, _ in deployed if name == "psycopg")
+    assert "crypto" in next(extras for name, extras, _, _ in deployed if name == "pyjwt")
+
+
+def test_application_third_party_imports_have_direct_runtime_dependencies():
+    backend = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((backend / "pyproject.toml").read_text("utf-8"))["project"]
+    declared = {canonicalize_name(Requirement(line).name) for line in project["dependencies"]}
+    imported = set()
+    for file in [backend / "index.py", *sorted((backend / "app").glob("*.py"))]:
+        for node in ast.walk(ast.parse(file.read_text("utf-8"))):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                imported.add(node.module.split(".")[0])
+    aliases = {"jwt": "pyjwt"}
+    third_party = imported - sys.stdlib_module_names - {"app"}
+    assert third_party
+    assert {aliases.get(name, canonicalize_name(name)) for name in third_party} <= declared
 
 
 def hosted(**changes):
