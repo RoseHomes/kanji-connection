@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "installCommand": "node -e 'const fs = require(\"node:fs\"); console.log(\"cwd:\", process.cwd()); for (const p of [\"package.json\", \"package-lock.json\", \"frontend/package-lock.json\"]) console.log(p + \": \" + (fs.existsSync(p) ? \"present\" : \"missing\"));' && npm ci --include=dev",
+  "installCommand": "npm ci --include=dev",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
