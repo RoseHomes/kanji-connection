@@ -36,6 +36,8 @@ artifacts/
 /content_audit.json
 /seed_validation.json
 /content/editorial-corrections.json
+/docs/archive/
+/docs/reports/IMPLEMENTATION_STATUS.md
 
 # Local credential stores must not enter a source publication.
 *.p8
