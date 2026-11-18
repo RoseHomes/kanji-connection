@@ -1,0 +1,587 @@
+{
+  "$defs": {
+    "Answer": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "maximum": 14,
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "prompt": {
+          "minLength": 1,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "answer": {
+          "minLength": 1,
+          "title": "Answer",
+          "type": "string"
+        },
+        "pdf_page": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Pdf Page",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "number",
+        "prompt",
+        "answer",
+        "pdf_page"
+      ],
+      "title": "Answer",
+      "type": "object"
+    },
+    "Card": {
+      "additionalProperties": false,
+      "properties": {
+        "character": {
+          "maxLength": 1,
+          "minLength": 1,
+          "title": "Character",
+          "type": "string"
+        },
+        "meaning_th": {
+          "minLength": 1,
+          "title": "Meaning Th",
+          "type": "string"
+        },
+        "reading_example": {
+          "minLength": 1,
+          "title": "Reading Example",
+          "type": "string"
+        },
+        "example": {
+          "minLength": 1,
+          "title": "Example",
+          "type": "string"
+        },
+        "memory_note": {
+          "minLength": 1,
+          "title": "Memory Note",
+          "type": "string"
+        },
+        "pdf_page": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Pdf Page",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "character",
+        "meaning_th",
+        "reading_example",
+        "example",
+        "memory_note",
+        "pdf_page"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "Chapter": {
+      "additionalProperties": false,
+      "properties": {
+        "chapter": {
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Chapter",
+          "type": "integer"
+        },
+        "part": {
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Part",
+          "type": "integer"
+        },
+        "title_th": {
+          "minLength": 1,
+          "title": "Title Th",
+          "type": "string"
+        },
+        "subtitle_th": {
+          "minLength": 1,
+          "title": "Subtitle Th",
+          "type": "string"
+        },
+        "pdf_pages": {
+          "$ref": "#/$defs/Pages"
+        },
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "kanji_preview": {
+          "items": {
+            "$ref": "#/$defs/Preview"
+          },
+          "title": "Kanji Preview",
+          "type": "array"
+        },
+        "kanji_cards": {
+          "items": {
+            "$ref": "#/$defs/Card"
+          },
+          "title": "Kanji Cards",
+          "type": "array"
+        },
+        "comparisons": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/Compared"
+            },
+            "type": "array"
+          },
+          "title": "Comparisons",
+          "type": "array"
+        },
+        "memory_tips": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Memory Tips",
+          "type": "array"
+        },
+        "diagram": {
+          "$ref": "#/$defs/Diagram"
+        },
+        "vocabulary": {
+          "items": {
+            "$ref": "#/$defs/Word"
+          },
+          "title": "Vocabulary",
+          "type": "array"
+        },
+        "exercises": {
+          "items": {
+            "$ref": "#/$defs/Exercise"
+          },
+          "title": "Exercises",
+          "type": "array"
+        },
+        "answers": {
+          "items": {
+            "$ref": "#/$defs/Answer"
+          },
+          "title": "Answers",
+          "type": "array"
+        },
+        "editorial_status": {
+          "const": "unverified_source_extraction",
+          "title": "Editorial Status",
+          "type": "string"
+        },
+        "exercise_c_prompt": {
+          "minLength": 1,
+          "title": "Exercise C Prompt",
+          "type": "string"
+        },
+        "answer_c_note": {
+          "minLength": 1,
+          "title": "Answer C Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chapter",
+        "part",
+        "title_th",
+        "subtitle_th",
+        "pdf_pages",
+        "category",
+        "kanji_preview",
+        "kanji_cards",
+        "comparisons",
+        "memory_tips",
+        "diagram",
+        "vocabulary",
+        "exercises",
+        "answers",
+        "editorial_status",
+        "exercise_c_prompt",
+        "answer_c_note"
+      ],
+      "title": "Chapter",
+      "type": "object"
+    },
+    "Compared": {
+      "additionalProperties": false,
+      "properties": {
+        "kanji": {
+          "maxLength": 1,
+          "minLength": 1,
+          "title": "Kanji",
+          "type": "string"
+        },
+        "reading": {
+          "minLength": 1,
+          "title": "Reading",
+          "type": "string"
+        },
+        "meaning_th": {
+          "minLength": 1,
+          "title": "Meaning Th",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kanji",
+        "reading",
+        "meaning_th"
+      ],
+      "title": "Compared",
+      "type": "object"
+    },
+    "Diagram": {
+      "additionalProperties": false,
+      "properties": {
+        "core": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiagramCore"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "related": {
+          "items": {
+            "$ref": "#/$defs/DiagramRelated"
+          },
+          "title": "Related",
+          "type": "array"
+        },
+        "comparison_pairs": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/Compared"
+            },
+            "type": "array"
+          },
+          "title": "Comparison Pairs",
+          "type": "array"
+        },
+        "review_questions": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Review Questions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "core",
+        "related",
+        "comparison_pairs",
+        "review_questions"
+      ],
+      "title": "Diagram",
+      "type": "object"
+    },
+    "DiagramCore": {
+      "additionalProperties": false,
+      "properties": {
+        "kanji": {
+          "maxLength": 1,
+          "minLength": 1,
+          "title": "Kanji",
+          "type": "string"
+        },
+        "label_th": {
+          "minLength": 1,
+          "title": "Label Th",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kanji",
+        "label_th"
+      ],
+      "title": "DiagramCore",
+      "type": "object"
+    },
+    "DiagramRelated": {
+      "additionalProperties": false,
+      "properties": {
+        "kanji": {
+          "maxLength": 1,
+          "minLength": 1,
+          "title": "Kanji",
+          "type": "string"
+        },
+        "meaning_th": {
+          "minLength": 1,
+          "title": "Meaning Th",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kanji",
+        "meaning_th"
+      ],
+      "title": "DiagramRelated",
+      "type": "object"
+    },
+    "Exercise": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "maximum": 14,
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "prompt": {
+          "minLength": 1,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "answer": {
+          "minLength": 1,
+          "title": "Answer",
+          "type": "string"
+        },
+        "pdf_page": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Pdf Page",
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "kanji_meaning",
+            "vocabulary_reading"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "prompt",
+        "answer",
+        "pdf_page",
+        "type"
+      ],
+      "title": "Exercise",
+      "type": "object"
+    },
+    "Pages": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "End",
+          "type": "integer"
+        },
+        "opener": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Opener",
+          "type": "integer"
+        },
+        "kanji_cards": {
+          "items": {
+            "maximum": 243,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "title": "Kanji Cards",
+          "type": "array"
+        },
+        "comparison": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Comparison",
+          "type": "integer"
+        },
+        "diagram": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Diagram",
+          "type": "integer"
+        },
+        "vocabulary": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Vocabulary",
+          "type": "integer"
+        },
+        "exercises": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Exercises",
+          "type": "integer"
+        },
+        "answer_key": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Answer Key",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "opener",
+        "kanji_cards",
+        "comparison",
+        "diagram",
+        "vocabulary",
+        "exercises",
+        "answer_key"
+      ],
+      "title": "Pages",
+      "type": "object"
+    },
+    "Preview": {
+      "additionalProperties": false,
+      "properties": {
+        "character": {
+          "maxLength": 1,
+          "minLength": 1,
+          "title": "Character",
+          "type": "string"
+        },
+        "meaning_th": {
+          "minLength": 1,
+          "title": "Meaning Th",
+          "type": "string"
+        }
+      },
+      "required": [
+        "character",
+        "meaning_th"
+      ],
+      "title": "Preview",
+      "type": "object"
+    },
+    "SourcePage": {
+      "additionalProperties": false,
+      "properties": {
+        "pdf_page": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Pdf Page",
+          "type": "integer"
+        },
+        "section": {
+          "minLength": 1,
+          "title": "Section",
+          "type": "string"
+        },
+        "plain_text": {
+          "minLength": 1,
+          "title": "Plain Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pdf_page",
+        "section",
+        "plain_text"
+      ],
+      "title": "SourcePage",
+      "type": "object"
+    },
+    "Word": {
+      "additionalProperties": false,
+      "properties": {
+        "word": {
+          "minLength": 1,
+          "title": "Word",
+          "type": "string"
+        },
+        "reading": {
+          "minLength": 1,
+          "title": "Reading",
+          "type": "string"
+        },
+        "meaning_th": {
+          "minLength": 1,
+          "title": "Meaning Th",
+          "type": "string"
+        },
+        "pdf_page": {
+          "maximum": 243,
+          "minimum": 1,
+          "title": "Pdf Page",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "word",
+        "reading",
+        "meaning_th",
+        "pdf_page"
+      ],
+      "title": "Word",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 2,
+      "default": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "chapters": {
+      "items": {
+        "$ref": "#/$defs/Chapter"
+      },
+      "title": "Chapters",
+      "type": "array"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/SourcePage"
+      },
+      "title": "Pages",
+      "type": "array"
+    },
+    "source_files": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Source Files",
+      "type": "object"
+    },
+    "source_metadata": {
+      "additionalProperties": true,
+      "title": "Source Metadata",
+      "type": "object"
+    },
+    "issues": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Issues",
+      "type": "array"
+    }
+  },
+  "required": [
+    "chapters",
+    "pages",
+    "source_files",
+    "source_metadata"
+  ],
+  "title": "Book",
+  "type": "object"
+}

@@ -1,0 +1,179 @@
+﻿import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { RotateCcw } from "lucide-react";
+import { api } from "../api";
+import { DataState, ReadOnlyNotice, PrivateNotice } from "../components";
+import { Link } from "react-router-dom";
+import type { Health } from "../types";
+import { readProgress, saveReview } from "../progress";
+import { useAuth } from "../auth";
+import type { CloudReview } from "../learning-types";
+interface Card {
+  character: string;
+  meaning_th: string;
+  kunyomi: string[];
+  onyomi: string[];
+  schedule?: CloudReview | null;
+  private_development?: boolean;
+}
+export default function Review() {
+  const { session, ready } = useAuth();
+  const cache = useQueryClient();
+  const health = useQuery({
+    queryKey: ["health"],
+    queryFn: () => api<Health>("/health"),
+  });
+  const cloud = !!session && health.data?.content_mode === "database";
+  const readOnly = cloud && health.data?.account_writes_enabled !== true;
+  const key = ["review-cards", session?.user.id, cloud];
+  const { data, isPending, error, refetch } = useQuery({
+    queryKey: key,
+    queryFn: () => api<Card[]>(cloud ? "/me/review-cards" : "/kanjis"),
+    enabled: ready && !!health.data,
+  });
+  const [queue, setQueue] = useState<string[] | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const progress = readProgress();
+  const due =
+    data?.filter((k) => {
+      const s = cloud ? k.schedule : progress.cards[k.character];
+      return !s || Date.parse(s.due) <= Date.now();
+    }) || [];
+  const chars = queue ?? due.map((k) => k.character);
+  const card = data?.find((k) => k.character === chars[0]);
+  async function answer(knew: boolean) {
+    if (!card || busy || readOnly) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      if (cloud) {
+        const result = await api<CloudReview>(
+          `/me/reviews/${encodeURIComponent(card.character)}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              knew,
+              expected_version: card.schedule?.version || 0,
+            }),
+          },
+        );
+        cache.setQueryData<Card[]>(key, (old) =>
+          old?.map((k) =>
+            k.character === card.character ? { ...k, schedule: result } : k,
+          ),
+        );
+        void cache.invalidateQueries({ queryKey: ["dashboard"] });
+      } else if (!saveReview(card.character, knew)) {
+        setMessage("บันทึกไม่ได้ โปรดตรวจสิทธิ์การจัดเก็บข้อมูลของเบราว์เซอร์");
+        return;
+      }
+      setQueue(knew ? chars.slice(1) : [...chars.slice(1), card.character]);
+      setRevealed(false);
+    } catch (e) {
+      setMessage((e as Error).message);
+      void refetch();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="page section review-page">
+      <p className="eyebrow">A LITTLE EVERY DAY</p>
+      <h1>ให้ความทรงจำค่อย ๆ เติบโต</h1>
+      <p className="lead">
+        {cloud
+          ? "แฟลชการ์ดส่วนตัว · เซิร์ฟเวอร์คำนวณกำหนดทบทวน"
+          : "แฟลชการ์ดตัวอย่าง · เก็บผลในเบราว์เซอร์เครื่องนี้"}
+      </p>
+      <DataState
+        loading={isPending || health.isPending}
+        error={error || health.error}
+        retry={() => {
+          void refetch();
+          void health.refetch();
+        }}
+      />
+      {readOnly && <ReadOnlyNotice />}
+      {data?.some((k) => k.private_development) && <PrivateNotice />}
+      {message && (
+        <p role="alert" className="notice">
+          {message}
+        </p>
+      )}
+      {card ? (
+        <>
+          <p className="subtle">เหลือในรอบนี้ {chars.length} ตัว</p>
+          <button
+            className="flashcard"
+            disabled={busy}
+            onClick={() => setRevealed((v) => !v)}
+            aria-label={revealed ? "ซ่อนคำตอบ" : "เปิดคำตอบ"}
+          >
+            <span lang="ja">{card.character}</span>
+            {revealed ? (
+              <div>
+                <h2>{card.meaning_th}</h2>
+                <p lang="ja">
+                  {card.kunyomi.join("・")} / {card.onyomi.join("・")}
+                </p>
+              </div>
+            ) : (
+              <p>แตะเพื่อเปิดคำตอบ</p>
+            )}
+          </button>
+          {revealed && (
+            <div className="review-actions">
+              <button
+                disabled={busy || readOnly}
+                onClick={() => void answer(false)}
+              >
+                ยังจำไม่ได้ · ลองอีกครั้ง
+              </button>
+              <button
+                className="primary"
+                disabled={busy || readOnly}
+                onClick={() => void answer(true)}
+              >
+                จำได้แล้ว ✓
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        data &&
+        !error && (
+          <div className="notice">
+            {data.length === 0 ? (
+              <>
+                <h2>ยังไม่มีบัตรคันจิที่เปิดให้เข้าถึง</h2>
+                <Link className="text-link" to="/lessons">
+                  ดูบทเรียนและสิทธิ์ของบัญชี
+                </Link>
+              </>
+            ) : (
+              <>
+                <h2>ยังไม่มีการ์ดที่ถึงกำหนด 🌱</h2>
+                <p>กลับมาทบทวนอีกครั้งตามกำหนด หรือฝึกชุดนี้ซ้ำได้</p>
+                <button
+                  onClick={() => {
+                    setQueue(data.map((k) => k.character));
+                    setRevealed(false);
+                  }}
+                >
+                  <RotateCcw size={16} /> ฝึกอีกครั้ง
+                </button>
+              </>
+            )}
+          </div>
+        )
+      )}
+      <p className="subtle">
+        จำได้: นัดครั้งแรก 1 วัน แล้วเพิ่มเป็นสองเท่า สูงสุด 90 วัน
+        <br />
+        จำไม่ได้: ลองซ้ำในรอบนี้ และนัดใหม่ใน 1 วัน · ประเมินความจำด้วยตนเอง
+      </p>
+    </div>
+  );
+}

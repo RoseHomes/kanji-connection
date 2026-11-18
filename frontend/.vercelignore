@@ -1,0 +1,25 @@
+# Only source and reproducible build manifests are upload inputs.
+/*
+!/.vercelignore
+!/vercel.json
+!/package.json
+!/package-lock.json
+!/index.html
+!/tsconfig.json
+!/vite.config.ts
+!/src/
+**/.env*
+**/private/
+**/reference/
+**/artifacts/
+**/node_modules/
+**/*.pdf
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.dpapi
+**/*.test.ts
+**/*.test.tsx
+/src/test-setup.ts
+/src/**/*.json

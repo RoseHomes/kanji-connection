@@ -1,0 +1,123 @@
+import React, { Suspense, lazy, useEffect } from "react";
+import ReactDOM from "react-dom/client";
+import {
+  BrowserRouter,
+  Link,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ArrowUpRight, BookOpen, Sprout } from "lucide-react";
+import Home from "./pages/Home";
+import "./styles.css";
+import { AuthProvider, useAuth } from "./auth";
+const Catalog = lazy(() => import("./pages/Catalog"));
+const Lesson = lazy(() => import("./pages/Lesson"));
+const Explorer = lazy(() => import("./pages/Explorer"));
+const Compare = lazy(() => import("./pages/Compare"));
+const Review = lazy(() => import("./pages/Review"));
+const Account = lazy(() => import("./pages/Account"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Quiz = lazy(() => import("./pages/Quiz"));
+const client = new QueryClient({
+  defaultOptions: { queries: { staleTime: 60000, retry: 1 } },
+});
+function App() {
+  const { session } = useAuth();
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.getElementById("main")?.focus({ preventScroll: true });
+    const labels: Record<string, string> = {
+      lessons: "บทเรียน",
+      explore: "สำรวจคันจิ",
+      compare: "เปรียบเทียบ",
+      review: "ทบทวน",
+      quiz: "แบบฝึกหัด",
+      dashboard: "ความก้าวหน้า",
+      account: "บัญชี",
+    };
+    document.title = `${labels[pathname.split("/")[1]] || "เรียนรู้คันจิ"} · Kanji Connection`;
+  }, [pathname]);
+  return (
+    <>
+      <a className="skip" href="#main">
+        ข้ามไปยังเนื้อหา
+      </a>
+      <header className="site-header">
+        <Link className="brand" to="/">
+          <span className="brand-mark" lang="ja">
+            木
+          </span>
+          <span>
+            kanji<span className="brand-light">connection</span>
+            <small>ทุกตัวอักษร มีความเชื่อมโยง</small>
+          </span>
+        </Link>
+        <nav aria-label="เมนูหลัก">
+          <NavLink to="/lessons">บทเรียน</NavLink>
+          <NavLink to="/explore">สำรวจคันจิ</NavLink>
+          <NavLink to="/compare">เปรียบเทียบ</NavLink>
+          <NavLink to="/review">ทบทวน</NavLink>
+          <NavLink to="/quiz">แบบฝึกหัด</NavLink>
+          <NavLink to="/dashboard">ความก้าวหน้า</NavLink>
+        </nav>
+        <Link className="header-cta" to="/account">
+          <BookOpen size={16} /> {session ? "บัญชี" : "เข้าสู่ระบบ"}{" "}
+          <ArrowUpRight size={16} />
+        </Link>
+      </header>
+      <main id="main" tabIndex={-1}>
+        <Suspense
+          fallback={
+            <div className="page">
+              <p role="status">กำลังเปิดหน้า…</p>
+            </div>
+          }
+        >
+          <Routes key={session?.user.id || "guest"}>
+            <Route path="/" element={<Home />} />
+            <Route path="/lessons" element={<Catalog />} />
+            <Route path="/lessons/:slug" element={<Lesson />} />
+            <Route path="/explore" element={<Explorer />} />
+            <Route path="/compare" element={<Compare />} />
+            <Route path="/review" element={<Review />} />
+            <Route path="/account" element={<Account />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/quiz" element={<Quiz />} />
+            <Route path="/quiz/:slug" element={<Quiz />} />
+            <Route
+              path="*"
+              element={
+                <div className="page section">
+                  <h1>ไม่พบหน้านี้</h1>
+                  <Link to="/">กลับหน้าแรก</Link>
+                </div>
+              }
+            />
+          </Routes>
+        </Suspense>
+      </main>
+      <footer>
+        <Link to="/" className="footer-brand">
+          <Sprout size={20} /> kanji connection
+        </Link>
+        <span>ค่อย ๆ เรียนรู้ วันละความเชื่อมโยง</span>
+        <small>เนื้อหาที่ยังรอตรวจจะไม่เผยแพร่</small>
+      </footer>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  </React.StrictMode>,
+);

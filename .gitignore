@@ -1,0 +1,45 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env*
+!.env.example
+!.env.production.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.dpapi
+*.pdf
+*.[pP][dD][fF]
+reference/
+private/
+.vercel/
+coverage/
+*.db
+*.sqlite
+*.sqlite3
+*.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/
+artifacts/
+
+# Private-source-derived audit outputs and edition-bound editorial data.
+# Keep the originals locally; publish only separately reviewed summaries.
+/content_audit.json
+/seed_validation.json
+/content/editorial-corrections.json
+
+# Local credential stores must not enter a source publication.
+*.p8
+*.keystore
+.npmrc
+.pypirc
+credentials.json
