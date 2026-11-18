@@ -31,7 +31,7 @@ for (const name of [
 ])
   require(!git.ignores(name), "Production template must remain reviewable");
 const manifest = {
-  root_upload_denied: false,
+  root_inputs_restricted: false,
   git_exclusions_passed: true,
   git_index_verified: false,
   projects: {},
@@ -40,10 +40,23 @@ const rootRules = ignore().add(
   fs.readFileSync(path.join(root, ".vercelignore"), "utf8"),
 );
 require(rootRules.ignores("private/book.json") &&
-  rootRules.ignores(
-    "frontend/package.json",
-  ), "Repository-root uploads must be refused");
-manifest.root_upload_denied = true;
+  rootRules.ignores("backend/app/main.py") &&
+  rootRules.ignores("docs/README.md"), "Unrelated repository inputs must be excluded");
+manifest.root_inputs_restricted = true;
+const requiredFrontendInputs = [
+  ".vercelignore", "vercel.json", "package.json", "package-lock.json",
+  "index.html", "tsconfig.json", "vite.config.ts", "src/main.tsx",
+];
+const protectedFrontendInputs = [
+  ".env", ".env.production.example", "private/book.json", "reference/book.PDF",
+  "artifacts/test.json", "node_modules/test.js", "dist/index.html",
+  "test-results/test.png", "e2e/guest.spec.ts", "src/private/book.json",
+  "src/reference/book.pdf", "src/.env.local", "src/source.PDF",
+  "src/client.key", "src/client.pem", "src/client.crt", "src/client.pfx",
+  "src/password.dpapi", "src/credentials.json", "src/local.sqlite3",
+  "src/content.json", "src/Home.test.tsx", "src/test-setup.ts",
+];
+let frontendPathBaseChecks = 0;
 for (const project of ["frontend", "backend"]) {
   const base = path.join(root, project);
   const rules = ignore().add(
@@ -86,10 +99,27 @@ for (const project of ["frontend", "backend"]) {
         p,
       ),
     ), "Import tooling must not enter runtime bundle");
-  const config = JSON.parse(
-    fs.readFileSync(path.join(base, "vercel.json"), "utf8"),
-  );
+  const configText = fs.readFileSync(path.join(base, "vercel.json"), "utf8");
+  const config = JSON.parse(configText);
   if (project === "frontend") {
+    for (const key of ["installCommand", "buildCommand"])
+      require((configText.match(new RegExp(`"${key}"\\s*:`, "g")) ?? []).length === 1,
+        "Frontend configuration must have exactly one install/build command");
+    for (const [label, matcher] of [["root", rootRules], ["frontend", rules]]) {
+      for (const prefix of ["", "frontend/"]) {
+        for (const name of requiredFrontendInputs)
+          require(!matcher.ignores(prefix + name), `${label} ignore omits a required frontend input`);
+        for (const name of protectedFrontendInputs)
+          require(matcher.ignores(prefix + name), `${label} ignore permits a protected input`);
+        for (const name of included)
+          require(!matcher.ignores(prefix + name), `${label} ignore omits a frontend source file`);
+        frontendPathBaseChecks++;
+      }
+    }
+    for (const name of requiredFrontendInputs)
+      require(included.includes(name), "Required frontend input missing from upload manifest");
+    require(config.installCommand === "npm ci --include=dev" && config.buildCommand === "npm run build",
+      "Frontend install/build commands must be restored without diagnostics");
     const pkg = JSON.parse(
       fs.readFileSync(path.join(base, "package.json"), "utf8"),
     );
@@ -134,11 +164,12 @@ fs.writeFileSync(
 );
 console.log(
   JSON.stringify({
-    root_upload_denied: true,
+    root_inputs_restricted: true,
     git_ignore_rules_passed: true,
     git_index_verified: false,
     frontend_input_files: manifest.projects.frontend.input_files.length,
     backend_input_files: manifest.projects.backend.input_files.length,
     api_rewrites_checked: true,
+    frontend_path_base_checks: frontendPathBaseChecks,
   }),
 );

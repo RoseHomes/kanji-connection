@@ -1,4 +1,5 @@
-# Only source and reproducible build manifests are upload inputs.
+# Frontend build inputs, with explicit project- and repository-relative paths.
+# Vercel Root Directory remains frontend; other repository inputs stay excluded.
 /*
 !/.vercelignore
 !/vercel.json
@@ -8,18 +9,38 @@
 !/tsconfig.json
 !/vite.config.ts
 !/src/
+!/frontend/
+/frontend/*
+!/frontend/.vercelignore
+!/frontend/vercel.json
+!/frontend/package.json
+!/frontend/package-lock.json
+!/frontend/index.html
+!/frontend/tsconfig.json
+!/frontend/vite.config.ts
+!/frontend/src/
 **/.env*
 **/private/
 **/reference/
 **/artifacts/
 **/node_modules/
-**/*.pdf
+**/*.[pP][dD][fF]
 **/*.pem
 **/*.key
 **/*.p12
 **/*.pfx
+**/*.crt
+**/*.cer
+**/*.der
+**/*.jks
+**/*.p8
+**/*.keystore
 **/*.dpapi
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/credentials.json
 **/*.test.ts
 **/*.test.tsx
-/src/test-setup.ts
-/src/**/*.json
+**/src/test-setup.ts
+**/src/**/*.json

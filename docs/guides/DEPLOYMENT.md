@@ -23,9 +23,15 @@ token.
 | Include files outside Root Directory | OFF                               | OFF                                           |
 
 Use the settings and vercel.json inside each project root. The repository-root
-.vercelignore intentionally excludes everything: deploying the workspace root is
-unsupported. The root/project allowlists were inspected offline, not against a
-remote Vercel project. Vercel documents the
+.vercelignore and frontend/.vercelignore explicitly allow frontend build inputs
+under both project-relative and repository-relative paths. All other repository
+roots and protected inputs remain excluded. Root Directory must still be
+`frontend` or `backend`; deploying the workspace root is unsupported. The frontend
+project file takes precedence under Vercel's documented monorepo rules. These
+allowlists are verified offline against both path bases, not against a remote
+deployment. This does not establish which filtering path caused the earlier
+missing-manifest failure. Vercel documents
+[ignore-file precedence](https://vercel.com/docs/deployments/vercel-ignore#monorepos), the
 [FastAPI entrypoint](https://vercel.com/docs/frameworks/backend/fastapi),
 [Python runtime selection](https://vercel.com/docs/functions/runtimes/python)
 and
