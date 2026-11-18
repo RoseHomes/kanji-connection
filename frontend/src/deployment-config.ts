@@ -1,5 +1,12 @@
 import { publicAuthConfig } from "./auth-config.ts";
 
+// Vite treats these as prefixes. Validation below rejects suffix variants too.
+export const PUBLIC_BROWSER_ENV_PREFIXES = [
+  "VITE_API_URL",
+  "VITE_SUPABASE_URL",
+  "VITE_SUPABASE_PUBLISHABLE_KEY",
+];
+
 function exactHttpsOrigin(value: string | undefined) {
   if (!value || /YOUR_|REPLACE_|PROJECT_REF/i.test(value)) return false;
   try {
@@ -21,15 +28,12 @@ function exactHttpsOrigin(value: string | undefined) {
 export function requireProductionConfig(
   env: Record<string, string | undefined>,
 ) {
-  const allowed = [
-    "VITE_API_URL",
-    "VITE_SUPABASE_URL",
-    "VITE_SUPABASE_PUBLISHABLE_KEY",
-  ];
   if (
     Object.entries(env).some(
       ([name, value]) =>
-        value && name.startsWith("VITE_") && !allowed.includes(name),
+        value &&
+        name.startsWith("VITE_") &&
+        !PUBLIC_BROWSER_ENV_PREFIXES.includes(name),
     )
   ) {
     throw new Error(

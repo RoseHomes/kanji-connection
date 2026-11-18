@@ -66,9 +66,16 @@ Frontend:
 | VITE_SUPABASE_URL             | Existing Supabase Auth project HTTPS origin |
 | VITE_SUPABASE_PUBLISHABLE_KEY | Existing PUBLIC publishable/anon key        |
 
-Only these three VITE names are allowed in production. Missing/placeholder
-origins, loopback HTTP origins, server secrets and extra VITE variables fail the
-build. `npm run build:demo` is an explicit local demo build, not a Vercel
+Only these three VITE names may enter browser configuration. Vite's `envPrefix`
+and configuration loading use the same three application prefixes. Vercel's
+automatically prefixed framework metadata and unrelated VITE variables are
+excluded from both loading and browser exposure, rather than accepted as
+application configuration. Unexpected suffix variants of the application names
+still fail validation. Missing/placeholder origins, loopback HTTP origins and
+server keys also fail the build. `VITE_API_URL` remains required even when
+Supabase Auth is configured. See Vercel's
+[framework variables](https://vercel.com/docs/environment-variables/framework-environment-variables).
+`npm run build:demo` is an explicit local demo build, not a Vercel
 deployment command. Use `npm run dev` with the local API for the offline demo.
 
 Backend:
