@@ -1,4 +1,4 @@
-import { ArrowRight, RotateCcw } from "lucide-react";
+import { ArrowRight, RotateCcw, BookOpen, LockKeyhole } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Kanji } from "./types";
 export function DataState({
@@ -60,8 +60,54 @@ export function Reading({ text, reading }: { text: string; reading?: string }) {
 export function ReadOnlyNotice() {
   return (
     <p className="notice" role="status">
-      โหมดอ่านอย่างเดียว · ดูบทเรียนและคำถามได้ แต่ยังไม่เปิดการบันทึกผลหรือซิงก์
+      โหมดอ่านอย่างเดียว · เรียนและทำแบบฝึกหัดได้ แต่ยังไม่เปิดการบันทึกผลหรือซิงก์
     </p>
+  );
+}
+export function AccountGate({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="page section gate-page">
+      <div className="access-card">
+        <span className="icon-tile">
+          <LockKeyhole size={24} />
+        </span>
+        <p className="eyebrow">YOUR PERSONAL SPACE</p>
+        <h1>{title}</h1>
+        <p className="lead">{description}</p>
+        <p>บทเรียน คันจิ และแบบฝึกหัดที่เผยแพร่แล้ว เปิดให้เรียนได้โดยไม่ต้องมีบัญชี</p>
+        <div className="hero-actions">
+          <Link className="button primary" to="/account">
+            เข้าสู่ระบบ <ArrowRight size={17} />
+          </Link>
+          <Link className="button" to="/lessons">
+            เรียนโดยไม่เข้าสู่ระบบ
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+export function EmptyState({
+  title,
+  children,
+}: {
+  title: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="empty-state" role="status">
+      <span className="icon-tile">
+        <BookOpen size={25} />
+      </span>
+      <h2>{title}</h2>
+      <div>{children}</div>
+    </div>
   );
 }
 export function PrivateNotice() {
@@ -130,6 +176,17 @@ export function KanjiCard({
         <a href={item.source_url} target="_blank" rel="noreferrer">
           ดูแหล่งอ้างอิง <ArrowRight size={14} />
         </a>
+      )}
+      {["published", "sample", "verified_sample"].includes(
+        item.review_status,
+      ) && (
+        <Link
+          className="card-detail-link"
+          to={`/explore/${encodeURIComponent(item.character)}`}
+        >
+          ดูรายละเอียด <span lang="ja">{item.character}</span>
+          <ArrowRight size={16} />
+        </Link>
       )}
     </article>
   );

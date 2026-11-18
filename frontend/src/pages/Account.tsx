@@ -47,73 +47,93 @@ export default function Account() {
   }
   return (
     <div className="page section account-page">
-      <p className="eyebrow">YOUR LEARNING SPACE</p>
-      <h1>
-        {session ? "บัญชีของคุณ" : signup ? "เริ่มเส้นทางการเรียนรู้" : "ยินดีต้อนรับกลับ"}
-      </h1>
-      {!ready ? (
-        <p role="status">กำลังตรวจบัญชี…</p>
-      ) : session ? (
-        <div className="notice">
-          <p>{session.user.email}</p>
-          <Link className="button primary" to="/dashboard">
-            ดูความก้าวหน้า
-          </Link>{" "}
-          <button disabled={busy} onClick={() => void signout()}>
-            ออกจากระบบ
-          </button>
-        </div>
-      ) : (
-        <>
-          {!configured && (
-            <p className="notice">ยังไม่ได้ตั้งค่าบัญชี คุณยังเรียนและบันทึกแบบผู้เยี่ยมชมได้</p>
-          )}
-          <form onSubmit={(e) => void submit(e)} className="learning-form">
-            <label>
-              อีเมล
-              <input
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-            <label>
-              รหัสผ่าน
-              <input
-                type="password"
-                autoComplete={signup ? "new-password" : "current-password"}
-                minLength={8}
-                maxLength={128}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-            <button className="primary" disabled={!configured || busy}>
-              {busy ? "กำลังดำเนินการ…" : signup ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+      <aside className="account-intro">
+        <p className="eyebrow">A SPACE OF YOUR OWN</p>
+        <span className="account-glyph" lang="ja" aria-hidden="true">
+          学
+        </span>
+        <h2>
+          เริ่มเรียนก่อนได้
+          <br />
+          มีบัญชีเมื่อคุณพร้อม
+        </h2>
+        <p>บทเรียนสาธารณะเปิดให้ทุกคน ส่วนความก้าวหน้าและประวัติการเรียนเป็นพื้นที่ของคุณ</p>
+        <Link className="text-link" to="/lessons">
+          กลับไปเรียนโดยไม่เข้าสู่ระบบ →
+        </Link>
+      </aside>
+      <section className="account-panel">
+        <p className="eyebrow">YOUR LEARNING SPACE</p>
+        <h1>
+          {session ? "บัญชีของคุณ" : signup ? "เริ่มเส้นทางการเรียนรู้" : "ยินดีต้อนรับกลับ"}
+        </h1>
+        {!ready ? (
+          <p role="status">กำลังตรวจบัญชี…</p>
+        ) : session ? (
+          <div className="notice">
+            <p>{session.user.email}</p>
+            <Link className="button primary" to="/dashboard">
+              ดูความก้าวหน้า
+            </Link>{" "}
+            <button disabled={busy} onClick={() => void signout()}>
+              ออกจากระบบ
             </button>
-          </form>
-          <button
-            className="text-link"
-            onClick={() => {
-              setSignup(!signup);
-              setMessage("");
-            }}
-          >
-            {signup ? "มีบัญชีแล้ว · เข้าสู่ระบบ" : "ยังไม่มีบัญชี · สมัครสมาชิก"}
-          </button>
-        </>
-      )}
-      {message && (
-        <p role="status" className="notice">
-          {message}
+          </div>
+        ) : (
+          <>
+            {!configured && (
+              <p className="notice">
+                ยังไม่ได้ตั้งค่าบัญชี คุณยังเรียนและทำแบบฝึกหัดสาธารณะได้
+              </p>
+            )}
+            <form onSubmit={(e) => void submit(e)} className="learning-form">
+              <label>
+                อีเมล
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+              <label>
+                รหัสผ่าน
+                <input
+                  type="password"
+                  autoComplete={signup ? "new-password" : "current-password"}
+                  minLength={8}
+                  maxLength={128}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </label>
+              <button className="primary" disabled={!configured || busy}>
+                {busy ? "กำลังดำเนินการ…" : signup ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+              </button>
+            </form>
+            <button
+              className="text-link"
+              onClick={() => {
+                setSignup(!signup);
+                setMessage("");
+              }}
+            >
+              {signup ? "มีบัญชีแล้ว · เข้าสู่ระบบ" : "ยังไม่มีบัญชี · สมัครสมาชิก"}
+            </button>
+          </>
+        )}
+        {message && (
+          <p role="status" className="notice">
+            {message}
+          </p>
+        )}
+        <p className="subtle">
+          ข้อมูลเดิมในเบราว์เซอร์จะไม่ถูกส่งไปยังบัญชีอัตโนมัติ
+          คุณเลือกตรวจและซิงก์ได้ที่แดชบอร์ดเมื่อเปิดให้บันทึก
         </p>
-      )}
-      <p className="subtle">
-        ข้อมูลผู้เยี่ยมชมจะไม่ถูกส่งไปยังบัญชีอัตโนมัติ คุณเลือกตรวจและซิงก์ได้ที่แดชบอร์ด
-      </p>
+      </section>
     </div>
   );
 }

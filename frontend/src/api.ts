@@ -9,11 +9,13 @@ export class ApiError extends Error {
 }
 export async function api<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { anonymous?: boolean } = {},
 ): Promise<T> {
-  const { data } = supabase
-    ? await supabase.auth.getSession()
-    : { data: { session: null } };
+  const { anonymous = false, ...request } = options;
+  const { data } =
+    supabase && !anonymous
+      ? await supabase.auth.getSession()
+      : { data: { session: null } };
   const headers = new Headers(options.headers);
   if (data.session)
     headers.set("Authorization", `Bearer ${data.session.access_token}`);
@@ -22,7 +24,7 @@ export async function api<T>(
   const response = await fetch(
     `${import.meta.env.VITE_API_URL || ""}/api/v1${path}`,
     {
-      ...options,
+      ...request,
       headers,
       signal: options.signal
         ? AbortSignal.any([options.signal, timeout])
@@ -38,9 +40,9 @@ export async function api<T>(
         : response.status === 401
           ? "กรุณาเข้าสู่ระบบอีกครั้ง"
           : response.status === 404
-            ? "ไม่พบเนื้อหาที่บัญชีนี้เข้าถึงได้ กรุณาเลือกบทเรียนอื่นหรือเข้าสู่ระบบ"
+            ? "ไม่พบเนื้อหาที่เผยแพร่ หรือเนื้อหานี้ยังไม่พร้อมใช้งาน"
             : response.status === 503
-              ? "บริการยังไม่พร้อม กรุณาตรวจการตั้งค่าหรือลองใหม่"
+              ? "บริการยังไม่พร้อมใช้งาน โปรดลองอีกครั้ง"
               : "ยังโหลดข้อมูลไม่ได้ โปรดลองอีกครั้ง",
       response.status,
     );

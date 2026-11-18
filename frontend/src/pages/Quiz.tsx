@@ -3,9 +3,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api } from "../api";
-import { DataState, ReadOnlyNotice, PrivateNotice } from "../components";
+import {
+  DataState,
+  ReadOnlyNotice,
+  PrivateNotice,
+  EmptyState,
+} from "../components";
 import type { Health } from "../types";
-import { saveGuestAttempt, type QuizResult } from "../guest-learning";
+import type { QuizResult } from "../guest-learning";
 import type { LearningLesson, Question } from "../learning-types";
 export default function Quiz() {
   const { slug } = useParams();
@@ -13,22 +18,26 @@ export default function Quiz() {
   const cache = useQueryClient();
   const health = useQuery({
     queryKey: ["health"],
-    queryFn: () => api<Health>("/health"),
+    queryFn: () => api<Health>("/health", { anonymous: true }),
   });
   const lessons = useQuery({
     queryKey: ["learning-lessons", session?.user.id],
-    queryFn: () => api<LearningLesson[]>("/learning/lessons"),
-    enabled: ready,
+    queryFn: () =>
+      api<LearningLesson[]>("/learning/lessons", { anonymous: !session }),
+    enabled: ready || !session,
   });
   const questions = useQuery({
     queryKey: ["questions", slug, session?.user.id],
-    queryFn: () => api<Question[]>(`/learning/questions/${slug}`),
-    enabled: ready && !!slug,
+    queryFn: () =>
+      api<Question[]>(`/learning/questions/${slug}`, { anonymous: !session }),
+    enabled: (ready || !session) && !!slug,
   });
   if (!slug)
     return (
       <div className="page section">
+        <p className="eyebrow">THE PRACTICE ROOM</p>
         <h1>ฝึกทีละความเชื่อมโยง</h1>
+        <p className="lead">เลือกบท ลองตอบ และดูผลรอบนี้ · เริ่มได้โดยไม่ต้องมีบัญชี</p>
         <DataState
           loading={lessons.isPending}
           error={lessons.error}
@@ -36,16 +45,25 @@ export default function Quiz() {
         />
         <div className="lesson-grid">
           {lessons.data?.map((l) => (
-            <Link className="notice" to={`/quiz/${l.slug}`} key={l.slug}>
-              {l.title}
+            <Link
+              className="lesson-card available"
+              to={`/quiz/${l.slug}`}
+              key={l.slug}
+            >
+              <p className="eyebrow">PRACTICE</p>
+              <h2>{l.title}</h2>
+              <span className="text-link">เริ่มทำแบบฝึกหัด →</span>
               {l.private_development && " · ส่วนตัวสำหรับทดสอบ"}
             </Link>
           ))}
         </div>
         {lessons.data?.length === 0 && (
-          <p className="notice" role="status">
-            ยังไม่มีแบบฝึกหัดที่เปิดให้บัญชีนี้เข้าถึง <Link to="/lessons">ดูบทเรียน</Link>
-          </p>
+          <EmptyState title="แบบฝึกหัดสาธารณะกำลังเตรียมพร้อม">
+            <p>คำถามจะแสดงเมื่อบทเรียนและแบบฝึกหัดได้รับอนุมัติเผยแพร่แล้ว</p>
+            <Link className="text-link" to="/lessons">
+              ดูบทเรียน
+            </Link>
+          </EmptyState>
         )}
       </div>
     );
@@ -60,9 +78,11 @@ export default function Quiz() {
           "ฝึกทีละความเชื่อมโยง"}
       </h1>
       <p className="lead">
-        {session && health.data?.content_mode === "database"
+        {session &&
+        health.data?.content_mode === "database" &&
+        health.data.account_writes_enabled
           ? "บันทึกคำตอบกับบัญชี · เซิร์ฟเวอร์ตรวจคะแนน"
-          : "ฝึกในเครื่อง · เก็บประวัติแบบผู้เยี่ยมชม"}
+          : "ฝึกได้โดยไม่บันทึก · คำตอบและผลรอบนี้จะหายไปเมื่อออกจากหน้า"}
       </p>
       {lessons.data?.find((l) => l.slug === slug)?.private_development && (
         <PrivateNotice />
@@ -82,11 +102,19 @@ export default function Quiz() {
         <QuizRound
           key={`${slug}:${session?.user.id || "guest"}`}
           questions={questions.data}
-          persist={!!session && health.data.content_mode === "database"}
+          persist={
+            !!session &&
+            health.data.content_mode === "database" &&
+            health.data.account_writes_enabled === true
+          }
           readOnly={
             !!session &&
             health.data.content_mode === "database" &&
             !health.data.account_writes_enabled
+          }
+          privateDevelopment={
+            lessons.data?.find((l) => l.slug === slug)?.private_development ===
+            true
           }
           onSaved={() =>
             void cache.invalidateQueries({ queryKey: ["dashboard"] })
@@ -101,11 +129,13 @@ export function QuizRound({
   persist,
   onSaved,
   readOnly = false,
+  privateDevelopment = false,
 }: {
   questions: Question[];
   persist: boolean;
   onSaved: () => void;
   readOnly?: boolean;
+  privateDevelopment?: boolean;
 }) {
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
@@ -115,30 +145,22 @@ export function QuizRound({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const question = questions[index];
+  const canPersist = persist && !readOnly;
   async function check() {
-    if (!question || busy || result || readOnly) return;
+    if (!question || busy || result) return;
     setBusy(true);
     setError("");
     try {
       const value = await api<QuizResult>(
-        `${persist ? "/me/attempts/" : "/learning/check/"}${encodeURIComponent(question.key)}`,
+        `${canPersist ? "/me/attempts/" : "/learning/check/"}${encodeURIComponent(question.key)}`,
         {
           method: "POST",
+          anonymous: !canPersist && !privateDevelopment,
           body: JSON.stringify({ answer, submission_id: submission }),
         },
       );
-      if (
-        !persist &&
-        !saveGuestAttempt({
-          answer,
-          submission_id: submission,
-          question_key: question.key,
-          result: value,
-        })
-      )
-        setError("แสดงผลได้ แต่บันทึกในเครื่องไม่สำเร็จ");
       setResult(value);
-      onSaved();
+      if (canPersist) onSaved();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -155,19 +177,33 @@ export function QuizRound({
           <p>
             ตอบถูก {history.filter((r) => r.correct === true).length} จาก{" "}
             {history.filter((r) => r.status === "graded").length} ข้อที่ตรวจอัตโนมัติ
-            · รอตรวจ {history.filter((r) => r.correct === null).length} ข้อ
+            · ไม่คิดคะแนน {history.filter((r) => r.correct === null).length} ข้อ
           </p>
         )}
-        <Link className="button primary" to="/dashboard">
-          ดูความก้าวหน้า
-        </Link>
+        <div className="hero-actions">
+          <Link className="button primary" to="/quiz">
+            เลือกแบบฝึกหัดอื่น
+          </Link>
+          {canPersist ? (
+            <Link className="text-link" to="/dashboard">
+              ดูความก้าวหน้า
+            </Link>
+          ) : (
+            <span className="subtle">ผลรอบนี้ไม่ได้บันทึกในบัญชีหรือเบราว์เซอร์</span>
+          )}
+        </div>
       </div>
     );
   return (
     <section className="notice quiz-panel">
+      <progress
+        aria-label="ความคืบหน้าแบบฝึกหัด"
+        max={questions.length}
+        value={index + (result ? 1 : 0)}
+      />
       <p>
         ข้อ {index + 1} / {questions.length}
-        {question.manual && " · เขียนอธิบาย แล้วรอตรวจ"}
+        {question.manual && " · ข้ออธิบาย ไม่มีคะแนนอัตโนมัติ"}
       </p>
       <h2 lang="ja">{question.prompt}</h2>
       <form
@@ -188,21 +224,32 @@ export function QuizRound({
             onChange={(e) => setAnswer(e.target.value)}
           />
         </label>
-        {question.options.map((o, i) => (
-          <button
-            type="button"
-            key={i}
-            disabled={busy || !!result}
-            onClick={() => setAnswer(o.text)}
-          >
-            {o.text}
-          </button>
-        ))}
+        {question.options.length > 0 && (
+          <fieldset className="answer-options">
+            <legend>เลือกคำตอบ</legend>
+            {question.options.map((o, i) => (
+              <label key={i} className={answer === o.text ? "selected" : ""}>
+                <input
+                  type="radio"
+                  name="answer-option"
+                  checked={answer === o.text}
+                  disabled={busy || !!result}
+                  onChange={() => setAnswer(o.text)}
+                />
+                <span lang="ja">{o.text}</span>
+              </label>
+            ))}
+          </fieldset>
+        )}
         <button
           className="primary"
-          disabled={readOnly || busy || !!result || !answer.trim()}
+          disabled={busy || !!result || !answer.trim()}
         >
-          {busy ? "กำลังบันทึก…" : question.manual ? "ส่งคำอธิบาย" : "ตรวจคำตอบ"}
+          {busy
+            ? "กำลังตรวจคำตอบ…"
+            : question.manual
+              ? "ส่งคำอธิบาย"
+              : "ตรวจคำตอบ"}
         </button>
       </form>
       {error && <p role="alert">{error}</p>}
@@ -210,7 +257,7 @@ export function QuizRound({
         <div role="status">
           <h3>
             {result.correct === null
-              ? "รอผู้สอนตรวจ · ยังไม่คิดคะแนน"
+              ? "ข้อนี้ไม่มีคะแนนอัตโนมัติ"
               : result.correct
                 ? "ถูกต้อง ✓"
                 : "ลองทบทวนอีกครั้ง"}

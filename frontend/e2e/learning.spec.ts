@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("guest completes sample quiz and keeps history after reload", async ({
+test("guest completes public quiz without storing personal history", async ({
   page,
 }) => {
   await page.goto("/quiz/chapter-02");
@@ -10,9 +10,18 @@ test("guest completes sample quiz and keeps history after reload", async ({
     await page.getByRole("button", { name: "ข้อถัดไป →" }).click();
   }
   await expect(page.getByText(/ตอบถูก 3 จาก 3/)).toBeVisible();
-  await page.getByRole("link", { name: "ดูความก้าวหน้า", exact: true }).click();
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem("kanji-connection:learning:v1"),
+    ),
+  ).toBeNull();
+  await page.goto("/dashboard");
+  await expect(
+    page.getByRole("link", { name: "เรียนโดยไม่เข้าสู่ระบบ" }),
+  ).toBeVisible();
+  await page.goto("/quiz/chapter-02");
   await page.reload();
-  await expect(page.getByText("3 / 3", { exact: true })).toBeVisible();
+  await expect(page.getByText("ข้อ 1 / 3", { exact: true })).toBeVisible();
 });
 test("account configuration state and learning layout fit a phone", async ({
   page,
@@ -21,7 +30,7 @@ test("account configuration state and learning layout fit a phone", async ({
   await page.goto("/account");
   await expect(page.getByLabel("อีเมล", { exact: true })).toBeVisible();
   await expect(
-    page.getByText("ยังไม่ได้ตั้งค่าบัญชี คุณยังเรียนและบันทึกแบบผู้เยี่ยมชมได้"),
+    page.getByText("ยังไม่ได้ตั้งค่าบัญชี คุณยังเรียนและทำแบบฝึกหัดสาธารณะได้"),
   ).toBeVisible();
   await page.goto("/dashboard");
   await expect(

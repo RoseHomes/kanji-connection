@@ -1,7 +1,7 @@
 # Kanji Connection
 
 A Thai-language Kanji learning application built around visual comparison,
-contextual readings, quizzes and spaced review. The public source supports an
+contextual readings, quizzes and spaced review. The public source supports a
 sample experience; the book dataset and PDF are not
 distributed with this repository.
 
@@ -31,13 +31,19 @@ evidence and limits.
   Thai/Japanese text.
 - Source-provided group furigana, contextual reading notes and PDF provenance
   where available.
-- Server-graded quizzes; comparison explanations remain pending manual review.
-- Guest storage and account-owned progress, version conflicts, idempotent
-  submissions and SRS scheduling.
-- Guest/cloud sync previews with explicit conflict choices and no automatic
-  merging.
+- Published public lessons, Kanji details and practice need no account. When no
+  content is approved, public pages explain the publication empty state.
+- Server-graded public quizzes keep results in component state for the current
+  visit only. Comparison explanations remain pending manual review.
+- Personal dashboards, review queues and progress require authentication;
+  persistence also requires the existing server write permission.
+- Legacy browser/cloud sync previews preserve explicit conflict choices, without
+  automatically importing old records or storing new anonymous quiz history.
 - Private content filters, verified bearer tokens and a hosted guard that
   disables development access.
+
+See the [public learning and redesign report](docs/reports/PUBLIC_LEARNING_REDESIGN.md)
+for the access matrix, visual system, actual verification and remaining approval limits.
 
 Book-dependent features require separately authorized private inputs. Missing
 readings, diagram cores and translations are not invented, and visual mnemonics

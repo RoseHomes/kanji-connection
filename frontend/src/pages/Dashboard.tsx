@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api } from "../api";
-import { DataState, ReadOnlyNotice } from "../components";
+import { DataState, ReadOnlyNotice, AccountGate } from "../components";
 import type { Health } from "../types";
 import { guestSnapshot, readGuestLearning } from "../guest-learning";
 import { readProgress } from "../progress";
@@ -42,10 +42,27 @@ function syncValue(kind: string, value: object | null) {
 }
 export default function Dashboard() {
   const { session, ready } = useAuth();
+  if (!ready)
+    return (
+      <div className="page section">
+        <p role="status">กำลังตรวจบัญชี…</p>
+      </div>
+    );
+  if (!session)
+    return (
+      <AccountGate
+        title="พื้นที่การเรียนรู้ของคุณ"
+        description="เข้าสู่ระบบเพื่อดูความก้าวหน้า ประวัติแบบฝึกหัด และคิวทบทวนส่วนตัว บทเรียนสาธารณะยังเปิดอ่านได้โดยไม่ต้องมีบัญชี"
+      />
+    );
+  return <PersonalDashboard />;
+}
+function PersonalDashboard() {
+  const { session, ready } = useAuth();
   const cache = useQueryClient();
   const health = useQuery({
     queryKey: ["health"],
-    queryFn: () => api<Health>("/health"),
+    queryFn: () => api<Health>("/health", { anonymous: true }),
     enabled: ready && !!session,
   });
   const readOnly = !!session && health.data?.account_writes_enabled !== true;
@@ -182,9 +199,7 @@ export default function Dashboard() {
           </div>
           {(records?.quiz.pending ??
             local.attempts.filter((a) => a.result.correct === null).length) >
-            0 && (
-            <p className="notice">มีคำตอบเปรียบเทียบรอตรวจ ไม่รวมในคะแนนอัตโนมัติ</p>
-          )}
+            0 && <p className="notice">มีคำตอบแบบอธิบายที่ไม่รวมในคะแนนอัตโนมัติ</p>}
           <h2>ความก้าวหน้ารายบท</h2>
           {records?.lessons.length === 0 && (
             <p className="subtle">
@@ -210,7 +225,7 @@ export default function Dashboard() {
                     <span>{questionLabel(a.question_key)}</span>
                     <span>
                       {a.correct === null
-                        ? "รอตรวจ"
+                        ? "ไม่คิดคะแนนอัตโนมัติ"
                         : a.correct
                           ? "ถูกต้อง"
                           : "ลองใหม่"}{" "}

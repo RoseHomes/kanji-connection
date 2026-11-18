@@ -15,7 +15,14 @@ afterEach(() => {
   vi.resetAllMocks();
   localStorage.clear();
 });
-it("keeps read-only questions inspectable without submitting or saving an answer", () => {
+it("lets a read-only account practice through the non-persisting endpoint", async () => {
+  mocks.api.mockResolvedValue({
+    correct: true,
+    status: "graded",
+    expected: "き",
+    explanation: "",
+    persisted: false,
+  });
   render(
     <MemoryRouter>
       <QuizRound
@@ -35,9 +42,11 @@ it("keeps read-only questions inspectable without submitting or saving an answer
     </MemoryRouter>,
   );
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "き" } });
-  expect(screen.getByRole("button", { name: "ตรวจคำตอบ" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "ตรวจคำตอบ" })).not.toBeDisabled();
   fireEvent.submit(screen.getByRole("textbox").closest("form")!);
-  expect(mocks.api).not.toHaveBeenCalled();
+  await screen.findByText("ถูกต้อง ✓");
+  expect(mocks.api.mock.calls[0][0]).toContain("/learning/check/");
+  expect(localStorage.length).toBe(0);
 });
 it("submits answers once, shows feedback, and keeps comparison responses ungraded", async () => {
   mocks.api.mockResolvedValueOnce({
@@ -74,6 +83,7 @@ it("submits answers once, shows feedback, and keeps comparison responses ungrade
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "き" } });
   fireEvent.click(screen.getByRole("button", { name: "ตรวจคำตอบ" }));
   await screen.findByText("ถูกต้อง ✓");
+  expect(localStorage.length).toBe(0);
   const request = JSON.parse(mocks.api.mock.calls[0][1].body);
   expect(request.answer).toBe("き");
   expect(request.submission_id).toBeTruthy();
@@ -89,7 +99,7 @@ it("submits answers once, shows feedback, and keeps comparison responses ungrade
     target: { value: "source explanation" },
   });
   fireEvent.click(screen.getByRole("button", { name: "ส่งคำอธิบาย" }));
-  await screen.findByText("รอผู้สอนตรวจ · ยังไม่คิดคะแนน");
+  await screen.findByText("ข้อนี้ไม่มีคะแนนอัตโนมัติ");
   fireEvent.click(screen.getByRole("button", { name: "ข้อถัดไป →" }));
   await screen.findByText(/ตอบถูก 1 จาก 1 ข้อที่ตรวจอัตโนมัติ/);
 });

@@ -14,15 +14,16 @@ def test_health_reports_sample_mode_and_no_database_claim():
 
 def test_catalog_is_metadata_and_only_sample_is_accessible():
     items = client.get("/api/v1/lessons").json()
-    assert len(items) == 30
+    assert len(items) == 1
+    assert all(x["is_available"] and x["status"] == "sample" for x in items)
     assert sum(x["available_count"] for x in items) == 3
     assert client.get("/api/v1/lessons/chapter-01").status_code == 404
     assert len(client.get("/api/v1/lessons/chapter-02").json()["kanjis"]) == 3
 
 
 def test_catalog_filters_and_validation():
-    assert len(client.get("/api/v1/lessons?part=2").json()) == 5
-    assert len(client.get("/api/v1/lessons?limit=2&offset=1").json()) == 2
+    assert client.get("/api/v1/lessons?part=2").json() == []
+    assert client.get("/api/v1/lessons?limit=2&offset=1").json() == []
     assert client.get("/api/v1/lessons?part=7").status_code == 422
     assert len(client.get("/api/v1/lessons?status=sample").json()) == 1
 

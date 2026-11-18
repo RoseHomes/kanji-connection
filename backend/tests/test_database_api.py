@@ -98,7 +98,9 @@ def test_database_api_reads_stored_content_and_filters_private(db_client):
     body = db_client.get("/api/v1/lessons/chapter-02").json()
     assert body["title_th"] == "DB lesson from stored row"
     assert len(body["kanjis"]) == 3
-    assert body["sections"] == [{"kind": "text", "blocks": [{"text": "PUBLIC_BLOCK"}]}]
+    assert body["sections"] == [
+        {"kind": "text", "blocks": [{"text": "PUBLIC_BLOCK"}], "pdf_pages": []}
+    ]
     assert "PRIVATE" not in str(body) and "secret" not in str(body)
     assert "PREMIUM" not in str(body)
     assert db_client.get("/api/v1/kanjis/人").status_code == 404
@@ -113,9 +115,9 @@ def test_database_search_filters_order_and_literal_wildcards(db_client):
     assert len(db_client.get("/api/v1/kanjis?q=木").json()) == 3
     assert db_client.get("/api/v1/kanjis?q=%25").json() == []
     assert db_client.get("/api/v1/kanjis?q=_").json() == []
-    assert len(db_client.get("/api/v1/lessons?part=2").json()) == 5
+    assert db_client.get("/api/v1/lessons?part=2").json() == []
     assert len(db_client.get("/api/v1/lessons?q=森").json()) == 1
-    assert len(db_client.get("/api/v1/lessons?limit=2&offset=1").json()) == 2
+    assert db_client.get("/api/v1/lessons?limit=2&offset=1").json() == []
     assert [k["character"] for k in db_client.get("/api/v1/compare?characters=森,木").json()] == [
         "森",
         "木",

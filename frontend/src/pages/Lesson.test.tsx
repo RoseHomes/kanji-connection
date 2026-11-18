@@ -61,7 +61,9 @@ it("renders stored lesson sections but disables progress writes in a read-only a
         ? { content_mode: "database", account_writes_enabled: false }
         : url === "/me/dashboard"
           ? { lessons: [] }
-          : lesson,
+          : url === "/learning/catalog"
+            ? []
+            : lesson,
     ),
   );
   mount();
@@ -74,7 +76,7 @@ it("shows a health failure and never falls back to a guest save", async () => {
   mocks.api.mockImplementation((url: string) =>
     url === "/health"
       ? Promise.reject(new Error("Network unavailable"))
-      : Promise.resolve(lesson),
+      : Promise.resolve(url === "/learning/catalog" ? [] : lesson),
   );
   mount();
   expect(await screen.findByRole("alert")).toHaveTextContent(

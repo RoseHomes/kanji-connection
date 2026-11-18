@@ -1,19 +1,40 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import type { Kanji } from "../types";
-import { DataState, KanjiVisual, PrivateNotice } from "../components";
+import {
+  DataState,
+  KanjiVisual,
+  PrivateNotice,
+  EmptyState,
+} from "../components";
 import { useAuth } from "../auth";
 export default function Compare() {
   const { session, ready } = useAuth();
   const [params, setParams] = useSearchParams();
-  const selected = (params.get("characters") || "林,森").split(",");
+  const picker = useQuery({
+    queryKey: ["comparison-picker", session?.user.id],
+    queryFn: () =>
+      api<Kanji[]>("/learning/kanjis?limit=24", { anonymous: !session }),
+    enabled: ready || !session,
+  });
+  const selected = (
+    params.get("characters") ??
+    picker.data
+      ?.slice(0, 2)
+      .map((k) => k.character)
+      .join(",") ??
+    ""
+  )
+    .split(",")
+    .filter(Boolean);
   const [input, setInput] = useState(selected.join(","));
+  const inputEdited = useRef(false);
   const [message, setMessage] = useState("");
   const selectionKey = selected.join(",");
   useEffect(() => {
-    setInput(selectionKey);
+    if (!inputEdited.current) setInput(selectionKey);
     setMessage("");
   }, [selectionKey]);
   const valid =
@@ -22,6 +43,7 @@ export default function Compare() {
     new Set(selected).size === selected.length &&
     selected.every((c) => Array.from(c).length === 1);
   function choose(chars: string[]) {
+    inputEdited.current = false;
     setParams({ characters: chars.join(",") });
     setInput(chars.join(","));
     setMessage("");
@@ -31,8 +53,9 @@ export default function Compare() {
     queryFn: () =>
       api<Kanji[]>(
         `/learning/compare?characters=${encodeURIComponent(selected.join(","))}`,
+        { anonymous: !session },
       ),
-    enabled: ready && valid,
+    enabled: (ready || !session) && valid,
   });
   return (
     <div className="page section">
@@ -61,17 +84,20 @@ export default function Compare() {
             id="compare-characters"
             value={input}
             maxLength={30}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              inputEdited.current = true;
+              setInput(e.target.value);
+            }}
             lang="ja"
           />
           <button type="submit">เปรียบเทียบ</button>
         </div>
       </form>
-      {(message || !valid) && (
+      {(message || (!valid && params.has("characters"))) && (
         <p role="alert">{message || "ลิงก์นี้ต้องระบุคันจิ 2–4 ตัว"}</p>
       )}
-      <div className="filters">
-        {["木", "林", "森"].map((c) => (
+      <div className="filters" role="group" aria-label="เลือกคันจิสำหรับเปรียบเทียบ">
+        {picker.data?.map(({ character: c }) => (
           <button
             key={c}
             lang="ja"
@@ -93,10 +119,18 @@ export default function Compare() {
         ))}
       </div>
       <DataState
-        loading={valid && isPending}
-        error={error}
-        retry={() => void refetch()}
+        loading={picker.isPending || (valid && isPending)}
+        error={error || picker.error}
+        retry={() => {
+          void refetch();
+          void picker.refetch();
+        }}
       />
+      {picker.data?.length === 0 && !params.has("characters") && (
+        <EmptyState title="ยังไม่มีคันจิที่เผยแพร่ให้เปรียบเทียบ">
+          <p>เมื่อมีบัตรที่ผ่านการอนุมัติแล้ว คุณจะเลือกดูข้างกันได้ที่นี่</p>
+        </EmptyState>
+      )}
       <div className="compare-grid">
         {data?.map((k) => (
           <article className="comparison" key={k.character}>
@@ -119,15 +153,15 @@ export default function Compare() {
         (k) =>
           !["published", "sample", "verified_sample"].includes(k.review_status),
       ) && <PrivateNotice />}
-      {data && selected.every((c) => ["木", "林", "森"].includes(c)) && (
-        <aside className="notice">
-          <strong>ความสัมพันธ์: ส่วนประกอบเดียวกัน</strong>
-          <p>
-            林 มี 木 สองส่วนวางข้างกัน ส่วน 森 มี 木 สามส่วน
-            วางหนึ่งส่วนด้านบนและสองส่วนด้านล่าง ภาพนี้ช่วยสังเกตรูปร่าง ไม่ใช่คำอธิบายลำดับขีด
-          </p>
-        </aside>
-      )}
+      {data &&
+        data.length > 1 &&
+        data[0].component &&
+        data.every((k) => k.component === data[0].component) && (
+          <aside className="notice">
+            <strong>ส่วนประกอบร่วมที่ระบุในข้อมูล</strong>
+            <p lang="ja">{data[0].component}</p>
+          </aside>
+        )}
     </div>
   );
 }

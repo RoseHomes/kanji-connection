@@ -3,16 +3,16 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, Search, LockKeyhole } from "lucide-react";
 import { api } from "../api";
 import type { Lesson } from "../types";
-import { DataState, PrivateNotice } from "../components";
+import { DataState, PrivateNotice, EmptyState } from "../components";
 import { useAuth } from "../auth";
 export const parts = [
   "ทั้งหมด",
-  "รากฐาน",
-  "การประกอบ",
-  "ตัวคล้าย",
-  "ส่วนประกอบ",
-  "ขั้นต่อไป",
-  "ชีวิตจริง",
+  "หมวด 1",
+  "หมวด 2",
+  "หมวด 3",
+  "หมวด 4",
+  "หมวด 5",
+  "หมวด 6",
 ];
 export default function Catalog() {
   const { session, ready } = useAuth();
@@ -26,8 +26,9 @@ export default function Catalog() {
     queryFn: () =>
       api<Lesson[]>(
         `/learning/catalog?q=${encodeURIComponent(q)}${part ? `&part=${encodeURIComponent(part)}` : ""}`,
+        { anonymous: !session },
       ),
-    enabled: ready,
+    enabled: ready || !session,
   });
   function update(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -39,7 +40,9 @@ export default function Catalog() {
     <div className="page section">
       <p className="eyebrow">THE CURRICULUM</p>
       <h1>เส้นทางการเรียนรู้</h1>
-      <p className="lead">30 บท · 6 หมวด · ค่อย ๆ สร้างความเข้าใจจากรากฐาน</p>
+      <p className="lead">
+        เลือกอ่านบทเรียนที่เผยแพร่แล้ว ในจังหวะของคุณเอง · ไม่ต้องเข้าสู่ระบบ
+      </p>
       {data?.some((l) => l.private_development) ? (
         <PrivateNotice />
       ) : (
@@ -57,7 +60,7 @@ export default function Catalog() {
           onChange={(e) => update("q", e.target.value)}
         />
       </label>
-      <div className="filters" aria-label="หมวดบทเรียน">
+      <div className="filters" role="group" aria-label="หมวดบทเรียน">
         {parts.map((p, i) => (
           <button
             key={p}
@@ -82,12 +85,15 @@ export default function Catalog() {
             </>
           ) : (
             <>
-              <p>ยังไม่มีบทเรียนที่เปิดให้บัญชีนี้เข้าถึง เนื้อหาที่ยังตรวจไม่เสร็จจะไม่เผยแพร่</p>
-              {!session && (
-                <Link className="text-link" to="/account">
-                  เข้าสู่ระบบเพื่อดูสิทธิ์ของบัญชี
+              <EmptyState title="บทเรียนสาธารณะกำลังเตรียมพร้อม">
+                <p>
+                  บทเรียนจะเปิดอ่านเมื่อผ่านการตรวจสอบและอนุมัติเผยแพร่แล้ว
+                  การเข้าสู่ระบบไม่ได้ปลดล็อกเนื้อหาที่รอตรวจ
+                </p>
+                <Link className="text-link" to="/explore">
+                  สำรวจคลังคันจิ
                 </Link>
-              )}
+              </EmptyState>
             </>
           )}
         </div>
@@ -111,7 +117,7 @@ export default function Catalog() {
               </small>
             </div>
             <div className="lesson-glyphs" lang="ja">
-              {l.anchors.slice(0, 4).join(" ") || "復習"}
+              {l.anchors.slice(0, 4).join(" ")}
             </div>
             <h2>{l.title_th}</h2>
             <p>{l.summary_th}</p>

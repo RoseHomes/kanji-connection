@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import String, and_, cast, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
+from .content_views import lesson_sections
 from .models import (
     Component,
     KanjiComponent,
@@ -14,7 +15,6 @@ from .models import (
     KanjiRelation,
     LessonKanji,
     LessonRecord,
-    LessonSection,
     Vocabulary,
     VocabularyKanji,
 )
@@ -89,7 +89,11 @@ class DatabaseRepository:
             )
             .scalar_subquery()
         )
-        query = select(LessonRecord, count).where(LessonRecord.catalog_visible.is_(True))
+        query = select(LessonRecord, count).where(
+            LessonRecord.catalog_visible.is_(True),
+            LessonRecord.status.in_(self.visible),
+            LessonRecord.access_tier == "free",
+        )
         if part:
             query = query.where(LessonRecord.chapter.between((part - 1) * 5 + 1, part * 5))
         if status:
@@ -148,24 +152,13 @@ class DatabaseRepository:
                 .order_by(LessonKanji.position, KanjiRecord.id)
             )
         )
-        sections = list(
-            self.session.scalars(
-                select(LessonSection)
-                .where(
-                    LessonSection.lesson_id == row.id,
-                    LessonSection.status.in_(self.visible),
-                    LessonSection.access_tier == "free",
-                )
-                .order_by(LessonSection.position)
-            )
-        )
         # Internal PDF paths, page audit notes and private provenance are never serialized.
         return LessonDetail(
             **self._lesson_response(row, len(kanjis)).model_dump(),
             kanjis=self._serialize_kanjis(kanjis),
             introduction_th=row.introduction_th,
             provenance=row.provenance.get("public_note", ""),
-            sections=[{"kind": s.kind, "blocks": s.blocks} for s in sections],
+            sections=lesson_sections(self.session, row.id, False, "sample" in self.visible),
         )
 
     def kanjis(self, q="", offset=0, limit=30):

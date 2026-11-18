@@ -15,13 +15,22 @@ export default defineConfig({
     {
       command: `${python} -m uvicorn app.main:app --host 127.0.0.1 --port 8000`,
       cwd: "../backend",
-      env: { CONTENT_SOURCE: "sample", ENABLE_USER_WRITES: "false" },
+      env: {
+        CONTENT_SOURCE: "sample",
+        ENABLE_USER_WRITES: "false",
+        VERCEL: "0",
+        DEVELOPMENT_USER_IDS: "[]",
+      },
       url: "http://127.0.0.1:8000/api/v1/health",
       reuseExistingServer: false,
     },
     {
       command: "npm run dev -- --port 5173 --strictPort",
-      env: { VITE_SUPABASE_URL: "", VITE_SUPABASE_PUBLISHABLE_KEY: "" },
+      env: {
+        VITE_API_URL: "",
+        VITE_SUPABASE_URL: "",
+        VITE_SUPABASE_PUBLISHABLE_KEY: "",
+      },
       url: "http://127.0.0.1:5173",
       reuseExistingServer: false,
     },

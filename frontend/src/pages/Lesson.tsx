@@ -3,10 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../auth";
-import { saveGuestLesson } from "../guest-learning";
 import type { DashboardData } from "../learning-types";
 import { api } from "../api";
-import type { Health, LessonDetail } from "../types";
+import type { Health, LessonDetail, Lesson as LessonMetadata } from "../types";
 import {
   DataState,
   KanjiCard,
@@ -21,7 +20,7 @@ export default function Lesson() {
   const [saving, setSaving] = useState(false);
   const health = useQuery({
     queryKey: ["health"],
-    queryFn: () => api<Health>("/health"),
+    queryFn: () => api<Health>("/health", { anonymous: true }),
   });
   const cloud = !!session && health.data?.content_mode === "database";
   const readOnly = cloud && health.data?.account_writes_enabled !== true;
@@ -31,7 +30,7 @@ export default function Lesson() {
     enabled: cloud,
   });
   async function markRead() {
-    if (!slug || readOnly || !health.data) return;
+    if (!slug || !session || !cloud || readOnly || !health.data) return;
     setSaving(true);
     setMessage("");
     try {
@@ -45,7 +44,7 @@ export default function Lesson() {
           }),
         });
         await progress.refetch();
-      } else if (!saveGuestLesson(slug)) throw new Error("บันทึกในเครื่องไม่สำเร็จ");
+      }
       setMessage("บันทึกว่าอ่านจบแล้ว · แยกจากคะแนนแบบฝึกหัด");
     } catch (e) {
       setMessage((e as Error).message);
@@ -56,9 +55,20 @@ export default function Lesson() {
   }
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ["lesson", slug, session?.user.id],
-    queryFn: () => api<LessonDetail>(`/learning/lesson/${slug}`),
-    enabled: ready,
+    queryFn: () =>
+      api<LessonDetail>(`/learning/lesson/${slug}`, { anonymous: !session }),
+    enabled: ready || !session,
   });
+  const navigation = useQuery({
+    queryKey: ["lesson-navigation", session?.user.id],
+    queryFn: () =>
+      api<LessonMetadata[]>("/learning/catalog", { anonymous: !session }),
+    enabled: !!data,
+  });
+  const position =
+    navigation.data?.findIndex((item) => item.slug === slug) ?? -1;
+  const previous = position > 0 ? navigation.data?.[position - 1] : undefined;
+  const next = position >= 0 ? navigation.data?.[position + 1] : undefined;
   return (
     <div className="page section">
       <Link className="text-link" to="/lessons">
@@ -85,6 +95,12 @@ export default function Lesson() {
           )}
           {readOnly && <ReadOnlyNotice />}
           <p className="lead">{data.introduction_th}</p>
+          <div className="study-toolbar">
+            <span>{data.kanjis.length} ตัวอักษรในบทนี้</span>
+            <a href="#lesson-content">เริ่มอ่านเนื้อหา ↓</a>
+            <Link to={`/quiz/${data.slug}`}>ไปแบบฝึกหัด →</Link>
+          </div>
+          <div id="lesson-content" />
           {data.status === "sample" && data.chapter === 2 && (
             <div className="lesson-banner">
               <MemoryIllustration count={3} />
@@ -119,19 +135,29 @@ export default function Lesson() {
             )}
           </aside>
           <div className="hero-actions">
-            <button
-              disabled={
-                saving || readOnly || !health.data || (cloud && !progress.data)
-              }
-              onClick={() => void markRead()}
-            >
-              บันทึกว่าอ่านจบแล้ว
-            </button>
-            <Link className="button" to={`/quiz/${data.slug}`}>
+            {session ? (
+              <button
+                disabled={
+                  saving ||
+                  !cloud ||
+                  readOnly ||
+                  !health.data ||
+                  (cloud && !progress.data)
+                }
+                onClick={() => void markRead()}
+              >
+                บันทึกว่าอ่านจบแล้ว
+              </button>
+            ) : (
+              <Link className="button" to="/account">
+                เข้าสู่ระบบเพื่อบันทึกความก้าวหน้า
+              </Link>
+            )}
+            <Link className="button primary" to={`/quiz/${data.slug}`}>
               ทำแบบฝึกหัด
             </Link>
-            <Link className="button primary" to="/review">
-              ฝึกด้วยแฟลชการ์ด <ArrowRight size={17} />
+            <Link className="button" to="/review">
+              แฟลชการ์ดส่วนตัว <ArrowRight size={17} />
             </Link>
             <Link className="text-link" to="/compare">
               เปรียบเทียบตัวอักษร <ArrowRight size={17} />
@@ -142,6 +168,22 @@ export default function Lesson() {
               {message}
             </p>
           )}
+          <nav className="lesson-navigation" aria-label="บทเรียนก่อนหน้าและถัดไป">
+            {previous ? (
+              <Link to={`/lessons/${previous.slug}`}>
+                <small>← บทก่อนหน้า</small>
+                {previous.title_th}
+              </Link>
+            ) : (
+              <span />
+            )}
+            {next && (
+              <Link to={`/lessons/${next.slug}`}>
+                <small>บทถัดไป →</small>
+                {next.title_th}
+              </Link>
+            )}
+          </nav>
         </>
       )}
     </div>

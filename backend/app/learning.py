@@ -45,7 +45,10 @@ class Learning:
 
     def lesson(self, slug):
         row = self.db.scalar(select(LessonRecord).where(LessonRecord.slug == slug))
-        if row is None or not (public_lesson(row, self.settings.expose_samples) or self.private):
+        if row is None or not (
+            (public_lesson(row, self.settings.expose_samples) and row.catalog_visible)
+            or self.private
+        ):
             raise HTTPException(404, "Lesson unavailable")
         return row
 

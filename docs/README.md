@@ -53,6 +53,9 @@ a local build.
 | [Documentation cleanup](reports/DOCUMENTATION_REVIEW.md)                  | Moves, consolidations, disclosure review and link-validation outcome                   |
 | [Publication safety audit](reports/PUBLICATION_READINESS.md)              | All Rights Reserved notice, staged-file safety review and clean-source build evidence  |
 
+The [public learning redesign report](reports/PUBLIC_LEARNING_REDESIGN.md) records
+the current access matrix, UI system, regression tests and publication restrictions.
+
 ## Archive
 
 The [archive index](archive/README.md) identifies superseded Auth planning, the

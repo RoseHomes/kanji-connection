@@ -121,7 +121,7 @@ it("paginates explorer results beyond the first 30 teaching cards", async () => 
 it("accepts a new comparison pair without showing the unrelated tree explanation", async () => {
   mocks.api.mockResolvedValue([card, { ...card, character: "林" }]);
   mount(<Compare />);
-  await screen.findByText("ความสัมพันธ์: ส่วนประกอบเดียวกัน");
+  await screen.findByRole("textbox", { name: "ตัวอักษรที่ต้องการเปรียบเทียบ" });
   fireEvent.change(
     screen.getByRole("textbox", { name: "ตัวอักษรที่ต้องการเปรียบเทียบ" }),
     { target: { value: "火,水" } },
@@ -134,9 +134,7 @@ it("accepts a new comparison pair without showing the unrelated tree explanation
       ),
     ).toBe(true),
   );
-  expect(
-    screen.queryByText("ความสัมพันธ์: ส่วนประกอบเดียวกัน"),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText("ส่วนประกอบร่วมที่ระบุในข้อมูล")).not.toBeInTheDocument();
 });
 it("does not call an empty flashcard collection a completed review", async () => {
   mocks.api.mockImplementation((url: string) =>
@@ -163,5 +161,9 @@ it("allows a flashcard reveal while disabling read-only review writes", async ()
   fireEvent.click(await screen.findByRole("button", { name: "เปิดคำตอบ" }));
   expect(screen.getByRole("button", { name: "จำได้แล้ว ✓" })).toBeDisabled();
   expect(screen.getByRole("heading", { name: "ต้นไม้" })).toBeVisible();
-  expect(mocks.api.mock.calls.every((call) => !call[1])).toBe(true);
+  expect(
+    mocks.api.mock.calls.every(
+      (call) => !call[1]?.method || call[1].method === "GET",
+    ),
+  ).toBe(true);
 });

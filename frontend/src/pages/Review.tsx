@@ -2,10 +2,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
 import { api } from "../api";
-import { DataState, ReadOnlyNotice, PrivateNotice } from "../components";
+import {
+  DataState,
+  ReadOnlyNotice,
+  PrivateNotice,
+  AccountGate,
+} from "../components";
 import { Link } from "react-router-dom";
 import type { Health } from "../types";
-import { readProgress, saveReview } from "../progress";
 import { useAuth } from "../auth";
 import type { CloudReview } from "../learning-types";
 interface Card {
@@ -18,13 +22,30 @@ interface Card {
 }
 export default function Review() {
   const { session, ready } = useAuth();
+  if (!ready)
+    return (
+      <div className="page section">
+        <p role="status">กำลังตรวจบัญชี…</p>
+      </div>
+    );
+  if (!session)
+    return (
+      <AccountGate
+        title="แฟลชการ์ดในจังหวะของคุณ"
+        description="เข้าสู่ระบบเพื่อดูคิวทบทวนและผลการจำส่วนตัว ข้อมูลนี้จะผูกกับบัญชีของคุณเท่านั้น"
+      />
+    );
+  return <PersonalReview />;
+}
+function PersonalReview() {
+  const { session, ready } = useAuth();
   const cache = useQueryClient();
   const health = useQuery({
     queryKey: ["health"],
-    queryFn: () => api<Health>("/health"),
+    queryFn: () => api<Health>("/health", { anonymous: true }),
   });
   const cloud = !!session && health.data?.content_mode === "database";
-  const readOnly = cloud && health.data?.account_writes_enabled !== true;
+  const readOnly = !cloud || health.data?.account_writes_enabled !== true;
   const key = ["review-cards", session?.user.id, cloud];
   const { data, isPending, error, refetch } = useQuery({
     queryKey: key,
@@ -35,10 +56,9 @@ export default function Review() {
   const [revealed, setRevealed] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const progress = readProgress();
   const due =
     data?.filter((k) => {
-      const s = cloud ? k.schedule : progress.cards[k.character];
+      const s = k.schedule;
       return !s || Date.parse(s.due) <= Date.now();
     }) || [];
   const chars = queue ?? due.map((k) => k.character);
@@ -65,9 +85,6 @@ export default function Review() {
           ),
         );
         void cache.invalidateQueries({ queryKey: ["dashboard"] });
-      } else if (!saveReview(card.character, knew)) {
-        setMessage("บันทึกไม่ได้ โปรดตรวจสิทธิ์การจัดเก็บข้อมูลของเบราว์เซอร์");
-        return;
       }
       setQueue(knew ? chars.slice(1) : [...chars.slice(1), card.character]);
       setRevealed(false);
@@ -85,7 +102,7 @@ export default function Review() {
       <p className="lead">
         {cloud
           ? "แฟลชการ์ดส่วนตัว · เซิร์ฟเวอร์คำนวณกำหนดทบทวน"
-          : "แฟลชการ์ดตัวอย่าง · เก็บผลในเบราว์เซอร์เครื่องนี้"}
+          : "ตัวอย่างบัตรคำ · ยังไม่พร้อมบันทึกกับบัญชี"}
       </p>
       <DataState
         loading={isPending || health.isPending}

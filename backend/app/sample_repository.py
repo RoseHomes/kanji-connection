@@ -11,7 +11,9 @@ class SampleRepository:
         return [
             x
             for x in LESSONS
-            if (not part or x.part == part)
+            if x.is_available
+            and x.status == "sample"
+            and (not part or x.part == part)
             and (not status or x.status == status)
             and (not q or q.casefold() in (x.title_th + " ".join(x.anchors)).casefold())
         ][offset : offset + limit]

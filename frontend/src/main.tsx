@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import {
   BrowserRouter,
@@ -9,13 +9,14 @@ import {
   useLocation,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ArrowUpRight, BookOpen, Sprout } from "lucide-react";
+import { ArrowUpRight, BookOpen, Sprout, Menu, X } from "lucide-react";
 import Home from "./pages/Home";
 import "./styles.css";
 import { AuthProvider, useAuth } from "./auth";
 const Catalog = lazy(() => import("./pages/Catalog"));
 const Lesson = lazy(() => import("./pages/Lesson"));
 const Explorer = lazy(() => import("./pages/Explorer"));
+const KanjiDetail = lazy(() => import("./pages/KanjiDetail"));
 const Compare = lazy(() => import("./pages/Compare"));
 const Review = lazy(() => import("./pages/Review"));
 const Account = lazy(() => import("./pages/Account"));
@@ -26,8 +27,10 @@ const client = new QueryClient({
 });
 function App() {
   const { session } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
   useEffect(() => {
+    setMenuOpen(false);
     window.scrollTo(0, 0);
     document.getElementById("main")?.focus({ preventScroll: true });
     const labels: Record<string, string> = {
@@ -46,7 +49,15 @@ function App() {
       <a className="skip" href="#main">
         ข้ามไปยังเนื้อหา
       </a>
-      <header className="site-header">
+      <header
+        className="site-header"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setMenuOpen(false);
+            document.getElementById("menu-toggle")?.focus();
+          }
+        }}
+      >
         <Link className="brand" to="/">
           <span className="brand-mark" lang="ja">
             木
@@ -56,12 +67,28 @@ function App() {
             <small>ทุกตัวอักษร มีความเชื่อมโยง</small>
           </span>
         </Link>
-        <nav aria-label="เมนูหลัก">
+        <button
+          id="menu-toggle"
+          className="menu-toggle"
+          aria-label={menuOpen ? "ปิดเมนู" : "เปิดเมนู"}
+          aria-controls="primary-navigation"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+        <nav
+          id="primary-navigation"
+          data-open={menuOpen}
+          aria-label="เมนูหลัก"
+          onClick={() => setMenuOpen(false)}
+        >
           <NavLink to="/lessons">บทเรียน</NavLink>
           <NavLink to="/explore">สำรวจคันจิ</NavLink>
           <NavLink to="/compare">เปรียบเทียบ</NavLink>
-          <NavLink to="/review">ทบทวน</NavLink>
           <NavLink to="/quiz">แบบฝึกหัด</NavLink>
+          <span className="nav-divider" aria-hidden="true" />
+          <NavLink to="/review">ทบทวน</NavLink>
           <NavLink to="/dashboard">ความก้าวหน้า</NavLink>
         </nav>
         <Link className="header-cta" to="/account">
@@ -82,6 +109,7 @@ function App() {
             <Route path="/lessons" element={<Catalog />} />
             <Route path="/lessons/:slug" element={<Lesson />} />
             <Route path="/explore" element={<Explorer />} />
+            <Route path="/explore/:character" element={<KanjiDetail />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/review" element={<Review />} />
             <Route path="/account" element={<Account />} />
@@ -105,7 +133,7 @@ function App() {
           <Sprout size={20} /> kanji connection
         </Link>
         <span>ค่อย ๆ เรียนรู้ วันละความเชื่อมโยง</span>
-        <small>เนื้อหาที่ยังรอตรวจจะไม่เผยแพร่</small>
+        <small>เรียนได้โดยไม่เข้าสู่ระบบ · All Rights Reserved</small>
       </footer>
     </>
   );

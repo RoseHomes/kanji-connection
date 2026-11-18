@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { api } from "../api";
 import type { Kanji } from "../types";
-import { DataState, KanjiCard } from "../components";
+import { DataState, KanjiCard, EmptyState } from "../components";
 import { useAuth } from "../auth";
 export default function Explorer() {
   const { session, ready } = useAuth();
@@ -14,15 +14,16 @@ export default function Explorer() {
     queryFn: () =>
       api<Kanji[]>(
         `/learning/kanjis?q=${encodeURIComponent(q)}&offset=${offset}&limit=31`,
+        { anonymous: !session },
       ),
-    enabled: ready,
+    enabled: ready || !session,
   });
   return (
     <div className="page section">
       <p className="eyebrow">KANJI EXPLORER</p>
       <h1>รู้จักทีละตัว เชื่อมโยงทีละนิด</h1>
       <p className="lead">
-        ค้นหาคันจิ ความหมายไทย คานะ หรือโรมาจิ ในเนื้อหาที่บัญชีนี้เข้าถึงได้
+        ค้นหาจากตัวอักษร ความหมายไทย คานะ หรือโรมาจิ · เปิดอ่านได้โดยไม่ต้องมีบัญชี
       </p>
       <label className="search-box">
         <Search size={20} />
@@ -43,14 +44,29 @@ export default function Explorer() {
         retry={() => void refetch()}
       />
       <p className="subtle">
-        แสดงเฉพาะบัตรคำสอน · เนื้อหาส่วนตัวและคำแปลที่รอตรวจยังไม่ถือว่าผ่านการอนุมัติ
+        เลือกบัตรเพื่อเปิดดูคำศัพท์และความเชื่อมโยงที่พร้อมให้เรียน
       </p>
       {data?.length === 0 && (
-        <p role="status">
-          {q
-            ? "ไม่พบคันจิที่ตรงกับคำค้น ลองเปลี่ยนหรือล้างคำค้น"
-            : "ยังไม่มีบัตรคันจิที่เปิดให้บัญชีนี้เข้าถึง"}
-        </p>
+        <EmptyState
+          title={
+            q
+              ? "ไม่พบคันจิที่ตรงกับคำค้น ลองเปลี่ยนหรือล้างคำค้น"
+              : "คลังคันจิสาธารณะกำลังเตรียมพร้อม"
+          }
+        >
+          {q ? (
+            <button
+              onClick={() => {
+                setQ("");
+                setOffset(0);
+              }}
+            >
+              ล้างคำค้น
+            </button>
+          ) : (
+            "บัตรคันจิที่ผ่านการอนุมัติจะปรากฏที่นี่ โดยไม่ต้องเข้าสู่ระบบ"
+          )}
+        </EmptyState>
       )}
       <div className="kanji-grid">
         {data?.slice(0, 30).map((k) => (
