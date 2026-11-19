@@ -1,10 +1,14 @@
 """Build an additive MCQ audit and reading exclusion map. No source/SQL writes."""
-import json,sys,hashlib
+import hashlib
+import json
+import sys
 from pathlib import Path
+
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'backend'))
 from app.book_verify import References
-from app.learning_presentation import objective_questions, VERSION
+from app.learning_presentation import VERSION, objective_questions
+
 
 def main():
     book=json.loads((ROOT/'private/editorial-working/effective-book.json').read_bytes())

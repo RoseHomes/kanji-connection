@@ -1,7 +1,7 @@
 """Start the separate, capability-protected, read-only loopback preview backend."""
 
-import json
 import argparse
+import json
 import secrets
 import sys
 from pathlib import Path

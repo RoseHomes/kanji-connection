@@ -11,6 +11,8 @@ from sqlalchemy import create_engine, event, select
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
+from sqlalchemy.orm import Session
+
 from app.book_bundle import Bundle
 from app.book_import import apply_bundle
 from app.catalog import SAMPLES
@@ -19,7 +21,6 @@ from app.learning import sample_questions
 from app.main import create_app
 from app.models import Base, LessonRecord, QuizQuestion
 from app.seed import seed
-from sqlalchemy.orm import Session
 
 
 def main():

@@ -14,6 +14,16 @@ from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
+from import_private_book import (
+    FOLDER,
+    counts,
+    foreign_key_check,
+    private_check,
+    require,
+    schema_check,
+    verify_sources,
+)
+
 from app.auth import Identity
 from app.config import Settings
 from app.database import create_database_engine
@@ -27,15 +37,6 @@ from app.models import (
     QuizQuestion,
     ReviewItem,
     UserProgress,
-)
-from import_private_book import (
-    FOLDER,
-    counts,
-    foreign_key_check,
-    private_check,
-    require,
-    schema_check,
-    verify_sources,
 )
 
 OWNED = {"user_progress", "review_items", "quiz_attempts"}

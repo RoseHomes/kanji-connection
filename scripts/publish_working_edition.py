@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-from sqlalchemy import text, update
+from sqlalchemy import SQLAlchemyError, text, update
 from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,6 +77,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception as exc:
+    except (ValueError, SQLAlchemyError, OSError, KeyError) as exc:
         print(json.dumps({'stopped': True, 'type': type(exc).__name__, 'reason': str(exc) if type(exc) is ValueError else 'Database details suppressed'}))
         raise SystemExit(1) from None

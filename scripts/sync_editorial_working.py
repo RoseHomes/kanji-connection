@@ -7,6 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
+from sqlalchemy import text
+
 from app.book_bundle import Bundle
 from app.config import Settings
 from app.content_revision import WORKING_RELATIVE, digest, pointer_get
@@ -18,7 +20,6 @@ from app.editorial_sync import (
     snapshot,
 )
 from app.json_content import SOURCE_RELATIVE, load_dataset
-from sqlalchemy import text
 
 FOLDER = ROOT / "private/editorial-sync/2026-11-19-final-v2"
 WORKING = ROOT / WORKING_RELATIVE
