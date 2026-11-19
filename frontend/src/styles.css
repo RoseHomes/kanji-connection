@@ -349,6 +349,13 @@ hr {
   top: 0;
   z-index: 30;
   backdrop-filter: blur(12px);
+  transition: transform 240ms ease;
+}
+.site-header[data-hidden="true"] {
+  transform: translateY(-100%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 240ms ease, visibility 0s linear 240ms;
 }
 .brand {
   display: flex;
