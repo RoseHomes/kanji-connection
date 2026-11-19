@@ -1,10 +1,4 @@
-import React, {
-  Suspense,
-  lazy,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import {
   BrowserRouter,
@@ -46,14 +40,9 @@ const client = new QueryClient({
 function App() {
   const { session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [headerHidden, setHeaderHidden] = useState(false);
-  const headerRef = useRef<HTMLElement>(null);
-  const scrollAnchor = useRef(0);
   const { pathname } = useLocation();
   useEffect(() => {
     setMenuOpen(false);
-    setHeaderHidden(false);
-    scrollAnchor.current = 0;
     window.scrollTo(0, 0);
     document.getElementById("main")?.focus({ preventScroll: true });
     const labels: Record<string, string> = {
@@ -67,43 +56,13 @@ function App() {
     };
     document.title = `${labels[pathname.split("/")[1]] || "เรียนรู้คันจิ"} · Kanji Connection`;
   }, [pathname]);
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const current = Math.max(0, window.scrollY);
-      const anchor = scrollAnchor.current;
-      const focused = headerRef.current?.contains(document.activeElement);
-      if (current <= 8 || menuOpen || focused) {
-        setHeaderHidden(false);
-        scrollAnchor.current = current;
-      } else if (current > anchor + 8) {
-        setHeaderHidden(true);
-        scrollAnchor.current = current;
-      } else if (current < anchor - 8) {
-        setHeaderHidden(false);
-        scrollAnchor.current = current;
-      }
-    };
-    const onScroll = () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [menuOpen]);
   return (
     <>
       <a className="skip" href="#main">
         ข้ามไปยังเนื้อหา
       </a>
       <header
-        ref={headerRef}
         className="site-header"
-        data-hidden={headerHidden}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             setMenuOpen(false);
