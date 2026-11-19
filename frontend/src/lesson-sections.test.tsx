@@ -47,11 +47,14 @@ it("keeps a contextual reading segment out of standalone character furigana", ()
     />,
   );
   expect(container.querySelector(".card-example ruby")).toBeNull();
-  expect(screen.getByText(/คำอ่านตามแหล่งข้อมูล/)).toHaveTextContent("ぐち");
-  expect(screen.getByText(/ดัชนีคำอ่านแยก/)).toHaveTextContent("くち");
-  expect(screen.getByText("หมายเหตุคำอ่านตามบริบท")).toBeVisible();
+  expect(screen.getByText("入口 いりぐち")).toBeVisible();
+  expect(
+    screen.queryByText(
+      /คำอ่านตามแหล่งข้อมูล|ดัชนีคำอ่านแยก|Existing editorial scope note/,
+    ),
+  ).not.toBeInTheDocument();
 });
-it("renders source group-ruby, Thai vocabulary and PDF provenance", () => {
+it("renders group-ruby and Thai vocabulary while hiding PDF provenance", () => {
   const { container } = render(
     <MemoryRouter>
       <LessonSections
@@ -80,11 +83,10 @@ it("renders source group-ruby, Thai vocabulary and PDF provenance", () => {
   );
   expect(container.querySelector("ruby[lang=ja] rt")).toHaveTextContent("き");
   expect(screen.getByText("ต้นไม้")).toBeVisible();
-  expect(screen.getAllByText("PDF หน้า 23")).toHaveLength(2);
-  expect(screen.getByRole("link", { name: "คำศัพท์" })).toHaveAttribute(
-    "href",
-    "#lesson-section-0",
-  );
+  expect(screen.queryByText(/PDF หน้า/)).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "คำศัพท์ที่เชื่อมความหมาย" }),
+  ).toHaveAttribute("href", "#lesson-section-0");
 });
 it("preserves a missing mnemonic core and presents existing source pairs only", () => {
   const { container } = render(
@@ -115,10 +117,9 @@ it("preserves a missing mnemonic core and presents existing source pairs only", 
       />
     </MemoryRouter>,
   );
-  expect(screen.getByText(/แหล่งข้อมูลไม่ระบุแกนกลาง/)).toBeVisible();
-  expect(container.querySelectorAll(".comparison-pair")).toHaveLength(1);
+  expect(container.querySelectorAll(".network-pairs a")).toHaveLength(1);
   expect(container.querySelector(".network-arrow")).toBeNull();
-  expect(screen.getByText(/ยังไม่ยืนยันว่าเป็นประวัติที่มาของอักษร/)).toBeVisible();
+  expect(screen.getByText(/ไม่ใช่ข้อสรุปเรื่องประวัติอักษร/)).toBeVisible();
 });
 it("labels typed component endpoints and links exercises to the actual chapter", () => {
   render(
@@ -164,8 +165,9 @@ it("labels typed component endpoints and links exercises to the actual chapter",
       />
     </MemoryRouter>,
   );
-  expect(screen.getByText("ส่วนประกอบ")).toBeVisible();
-  expect(
-    screen.getByRole("link", { name: "เปิดแบบฝึกหัดแบบโต้ตอบ" }),
-  ).toHaveAttribute("href", "/quiz/chapter-16");
+  expect(screen.getByText("氵")).toBeVisible();
+  expect(screen.getByRole("link", { name: /เริ่มข้อสอบเลือกตอบ/ })).toHaveAttribute(
+    "href",
+    "/quiz/chapter-16",
+  );
 });

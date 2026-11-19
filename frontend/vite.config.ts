@@ -25,7 +25,29 @@ export default defineConfig(({ mode, command }) => {
     // import.meta.env. Keep validation for all variables that can enter it.
     envPrefix: PUBLIC_BROWSER_ENV_PREFIXES,
     plugins: [react(), tailwindcss()],
-    server: { proxy: { "/api": "http://127.0.0.1:8000" } },
+    server: {
+      ...(mode === "editorial"
+        ? {
+            host: "127.0.0.1",
+            port: 5174,
+            strictPort: true,
+            fs: {
+              strict: true,
+              allow: ["."],
+              deny: ["**/.env", "**/.env.*", "**/.git/**", "**/private/**"],
+            },
+          }
+        : {}),
+      proxy: {
+        "/api":
+          mode === "editorial"
+            ? "http://127.0.0.1:8001"
+            : "http://127.0.0.1:8000",
+        ...(mode === "editorial"
+          ? { "/__editorial": "http://127.0.0.1:8001" }
+          : {}),
+      },
+    },
     test: {
       include: ["src/**/*.test.{ts,tsx}"],
       environment: "jsdom",

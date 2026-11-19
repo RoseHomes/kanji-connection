@@ -12,6 +12,7 @@ from .database import read_session
 from .learning import Learning, grade_sample, public_lesson, sample_questions
 from .learning_schema import (
     AnswerInput,
+    ChoiceInput,
     DevelopmentLesson,
     GuestSnapshot,
     ProgressInput,
@@ -25,6 +26,34 @@ from .schemas import LessonDetail
 
 router = APIRouter(prefix="/api/v1")
 ReadSession = Annotated[Session | None, Depends(read_session)]
+
+
+@router.get("/learning/comparison-groups")
+def curated_comparisons(request: Request, user: OptionalUser, db: ReadSession):
+    from .learning_presentation import comparison_groups
+
+    return comparison_groups(db, request.app.state.settings, user)
+
+
+@router.get("/learning/practice/{slug}")
+def practice_questions(slug: str, request: Request, user: OptionalUser, db: ReadSession):
+    from .learning_presentation import practice, public_question
+
+    return [public_question(q) for q in practice(db, request.app.state.settings, user, slug)]
+
+
+@router.post("/learning/practice/{slug}/{question_id}/check")
+def practice_check(
+    slug: str,
+    question_id: str,
+    body: ChoiceInput,
+    request: Request,
+    user: OptionalUser,
+    db: ReadSession,
+):
+    from .learning_presentation import check_choice
+
+    return check_choice(db, request.app.state.settings, user, slug, question_id, body.option_id)
 
 
 def account_session(request: Request, user: CurrentUser):
@@ -114,7 +143,6 @@ def learning_catalog(
             continue
         result.append(
             {
-                "id": row.id,
                 "chapter": row.chapter,
                 "slug": row.slug,
                 "part": (row.chapter - 1) // 5 + 1,

@@ -3,13 +3,19 @@ test("guest completes public quiz without storing personal history", async ({
   page,
 }) => {
   await page.goto("/quiz/chapter-02");
-  for (const answer of ["き", "はやし", "もり"]) {
-    await page.getByRole("textbox", { name: "คำตอบของคุณ" }).fill(answer);
+  for (const [index, answer] of ["き", "はやし", "もり"].entries()) {
+    await expect(page.getByRole("textbox")).toHaveCount(0);
+    await page.getByRole("radio", { name: answer, exact: true }).check();
     await page.getByRole("button", { name: "ตรวจคำตอบ", exact: true }).click();
-    await expect(page.getByText("ถูกต้อง ✓")).toBeVisible();
-    await page.getByRole("button", { name: "ข้อถัดไป →" }).click();
+    await expect(page.getByText("ถูกต้อง เชื่อมโยงได้แล้ว!")).toBeVisible();
+    await page
+      .getByRole("button", {
+        name: index === 2 ? "ดูผลการฝึก" : "ข้อต่อไป",
+        exact: true,
+      })
+      .click();
   }
-  await expect(page.getByText(/ตอบถูก 3 จาก 3/)).toBeVisible();
+  await expect(page.getByText(/ตอบถูก 3 ข้อ/)).toBeVisible();
   expect(
     await page.evaluate(() =>
       localStorage.getItem("kanji-connection:learning:v1"),
@@ -21,7 +27,7 @@ test("guest completes public quiz without storing personal history", async ({
   ).toBeVisible();
   await page.goto("/quiz/chapter-02");
   await page.reload();
-  await expect(page.getByText("ข้อ 1 / 3", { exact: true })).toBeVisible();
+  await expect(page.getByText("ข้อ 1 จาก 3", { exact: true })).toBeVisible();
 });
 test("account configuration state and learning layout fit a phone", async ({
   page,

@@ -25,7 +25,7 @@ class DevelopmentCard(BaseModel):
 class DevelopmentLesson(Lesson):
     kanjis: list[DevelopmentCard]
     introduction_th: str
-    provenance: str
+    provenance: str = Field(default="", exclude=True)
     sections: list[dict] = Field(default_factory=list)
 
 
@@ -36,6 +36,10 @@ class Input(BaseModel):
 class AnswerInput(Input):
     submission_id: UUID
     answer: str = Field(max_length=2000)
+
+
+class ChoiceInput(Input):
+    option_id: str = Field(min_length=1, max_length=80)
 
 
 class ProgressInput(Input):

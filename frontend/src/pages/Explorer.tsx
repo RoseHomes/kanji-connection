@@ -1,94 +1,171 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, ArrowUpRight } from "lucide-react";
 import { api } from "../api";
-import type { Kanji } from "../types";
-import { DataState, KanjiCard, EmptyState } from "../components";
-import { useAuth } from "../auth";
+import type { Kanji, Lesson, LessonDetail } from "../types";
+import { DataState, EmptyState } from "../components";
+import { PageHeading, Chips } from "../ui";
+import { learningGroups, chapterGroup } from "../presentation-types";
+import { ChoicePicker } from "../selection-controls";
 export default function Explorer() {
-  const { session, ready } = useAuth();
+  const [category, setCategory] = useState("all");
+  const [slug, setSlug] = useState("");
   const [q, setQ] = useState("");
   const [offset, setOffset] = useState(0);
-  const { data, isPending, error, refetch } = useQuery({
-    queryKey: ["kanjis", session?.user.id, q, offset],
+  const catalog = useQuery({
+    queryKey: ["learner-catalog"],
+    queryFn: () => api<Lesson[]>("/learning/catalog"),
+  });
+  const chapters =
+    catalog.data?.filter(
+      (l) => category === "all" || chapterGroup(l.chapter || 2) === category,
+    ) || [];
+  const activeSlug =
+    category === "all"
+      ? slug
+      : chapters.some((l) => l.slug === slug)
+        ? slug
+        : chapters[0]?.slug || "";
+  const cards = useQuery({
+    queryKey: ["explorer", q, offset],
     queryFn: () =>
       api<Kanji[]>(
         `/learning/kanjis?q=${encodeURIComponent(q)}&offset=${offset}&limit=31`,
-        { anonymous: !session },
       ),
-    enabled: ready || !session,
+    enabled: !activeSlug && category === "all",
   });
+  const chapter = useQuery({
+    queryKey: ["lesson", activeSlug],
+    queryFn: () => api<LessonDetail>(`/learning/lesson/${activeSlug}`),
+    enabled: !!activeSlug,
+  });
+  const scopedEmpty = category !== "all" && !chapters.length;
+  const data = scopedEmpty
+    ? []
+    : activeSlug
+      ? chapter.data?.kanjis
+      : cards.data?.slice(0, 30);
+  const loading = scopedEmpty
+    ? catalog.isPending
+    : activeSlug
+      ? chapter.isPending
+      : cards.isPending;
   return (
     <div className="page section">
-      <p className="eyebrow">KANJI EXPLORER</p>
-      <h1>รู้จักทีละตัว เชื่อมโยงทีละนิด</h1>
-      <p className="lead">
-        ค้นหาจากตัวอักษร ความหมายไทย คานะ หรือโรมาจิ · เปิดอ่านได้โดยไม่ต้องมีบัญชี
-      </p>
-      <label className="search-box">
-        <Search size={20} />
-        <input
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
+      <PageHeading eyebrow="A WORLD OF CONNECTIONS" title="เริ่มรู้จัก ทีละตัว">
+        <p>เลือกหมวดหรือบทที่สนใจ แล้วเปิดดูตัวอักษรที่อยากรู้จักเพิ่ม</p>
+      </PageHeading>
+      <Chips
+        label="หมวดคันจิ"
+        items={learningGroups}
+        value={category}
+        onChange={(v) => {
+          setCategory(v);
+          setSlug(
+            v === "all"
+              ? ""
+              : catalog.data?.find((l) => chapterGroup(l.chapter || 2) === v)
+                  ?.slug || "",
+          );
+          setQ("");
+          setOffset(0);
+        }}
+      />
+      <div className="explorer-toolbar">
+        <ChoicePicker
+          label="เลือกบทเรียนสำหรับสำรวจ"
+          value={activeSlug || "all-chapters"}
+          options={[
+            ...(category === "all"
+              ? [{ value: "all-chapters", label: "สำรวจตัวอักษรทั้งหมดที่พร้อมเรียน" }]
+              : []),
+            ...chapters.map((l) => ({
+              value: l.slug,
+              label: `บท ${l.chapter} · ${l.title_th}`,
+            })),
+          ]}
+          onChange={(value) => {
+            setSlug(value === "all-chapters" ? "" : value);
+            setQ("");
             setOffset(0);
           }}
-          maxLength={100}
-          aria-label="ค้นหาคันจิ"
-          placeholder="ลอง 木, ป่า, はやし หรือ mori"
         />
-      </label>
+        <label className="search-box">
+          <Search size={19} />
+          <span className="sr-only">ค้นหาเพิ่มเติม (ไม่จำเป็น)</span>
+          <input
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setSlug("");
+              setCategory("all");
+              setOffset(0);
+            }}
+            placeholder="ค้นหาเพิ่มเติม เช่น ป่า หรือ 木"
+            maxLength={100}
+          />
+        </label>
+      </div>
       <DataState
-        loading={isPending}
-        error={error}
-        retry={() => void refetch()}
+        loading={loading}
+        error={catalog.error || (activeSlug ? chapter.error : cards.error)}
+        retry={() => {
+          void cards.refetch();
+          void chapter.refetch();
+          void catalog.refetch();
+        }}
       />
-      <p className="subtle">
-        เลือกบัตรเพื่อเปิดดูคำศัพท์และความเชื่อมโยงที่พร้อมให้เรียน
+      <p className="count-label">
+        {data?.length || 0} ตัวอักษรที่แสดง · เลือกเปิดดูคำศัพท์และภาพช่วยจำ
       </p>
-      {data?.length === 0 && (
-        <EmptyState
-          title={
-            q
-              ? "ไม่พบคันจิที่ตรงกับคำค้น ลองเปลี่ยนหรือล้างคำค้น"
-              : "คลังคันจิสาธารณะกำลังเตรียมพร้อม"
-          }
-        >
-          {q ? (
-            <button
-              onClick={() => {
-                setQ("");
-                setOffset(0);
-              }}
-            >
-              ล้างคำค้น
-            </button>
-          ) : (
-            "บัตรคันจิที่ผ่านการอนุมัติจะปรากฏที่นี่ โดยไม่ต้องเข้าสู่ระบบ"
-          )}
-        </EmptyState>
-      )}
-      <div className="kanji-grid">
-        {data?.slice(0, 30).map((k) => (
-          <KanjiCard key={k.character} item={k} />
+      <div className="explorer-grid">
+        {data?.map((k, i) => (
+          <Link
+            className={`explorer-tile tone-${i % 4}`}
+            key={k.character}
+            to={`/explore/${encodeURIComponent(k.character)}`}
+          >
+            <span className="explorer-glyph" lang="ja">
+              {k.character}
+            </span>
+            <strong>{k.meaning_th}</strong>
+            <small lang="ja">
+              {k.kunyomi.join(" · ") || k.onyomi.join(" · ")}
+            </small>
+            <ArrowUpRight size={18} />
+          </Link>
         ))}
       </div>
-      {(offset > 0 || (data?.length || 0) > 30) && (
-        <nav className="pagination" aria-label="หน้ารายการคันจิ">
+      {!loading && !data?.length && (
+        <EmptyState title="ยังไม่พบตัวอักษรในชุดนี้">
+          <p>ลองเลือกบทอื่นหรือล้างคำค้น ไม่ต้องพิมพ์ภาษาญี่ปุ่นก็สำรวจได้</p>
           <button
-            disabled={offset === 0 || isPending}
+            onClick={() => {
+              setQ("");
+              setSlug("");
+              setCategory("all");
+            }}
+          >
+            ดูทั้งหมด
+          </button>
+        </EmptyState>
+      )}
+      {!activeSlug && !scopedEmpty && (
+        <div className="hero-actions">
+          <button
+            disabled={offset === 0}
             onClick={() => setOffset(Math.max(0, offset - 30))}
           >
-            ก่อนหน้า
+            ← ชุดก่อนหน้า
           </button>
-          <span>หน้า {Math.floor(offset / 30) + 1}</span>
           <button
-            disabled={!data || data.length <= 30 || isPending}
+            disabled={!cards.data || cards.data.length <= 30}
             onClick={() => setOffset(offset + 30)}
           >
-            ถัดไป
+            สำรวจชุดถัดไป →
           </button>
-        </nav>
+        </div>
       )}
     </div>
   );

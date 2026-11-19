@@ -3,6 +3,12 @@
 Implemented locally on 2026-11-18. No commit, push, deployment, migration, seed,
 credential change, content approval or production write was performed.
 
+> Update 2026-11-19: the verified working edition was subsequently published in
+> Supabase. The pre-publication database counts below are historical; a fresh
+> read-only check confirms 30 published/free/catalog-visible lessons, 94
+> comparison groups and 450 questions available without login. Answer keys stay
+> server-side until a choice is submitted, and account writes remain disabled.
+
 ## Original implementation inspected
 
 The existing React/TypeScript SPA uses React Router, TanStack Query, Lucide,

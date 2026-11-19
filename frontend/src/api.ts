@@ -7,6 +7,10 @@ export class ApiError extends Error {
     super(message);
   }
 }
+// Learning and catalog content is public. A stale browser session must never
+// turn those reads into a sign-in requirement; retry them without a token.
+const PUBLIC_READ = /^\/(health|lessons|kanjis|compare|search|learning)(\/|$)/;
+
 export async function api<T>(
   path: string,
   options: RequestInit & { anonymous?: boolean } = {},
@@ -22,7 +26,7 @@ export async function api<T>(
   if (options.body) headers.set("Content-Type", "application/json");
   const timeout = AbortSignal.timeout(15000);
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL || ""}/api/v1${path}`,
+    `${import.meta.env.MODE === "editorial" ? "" : import.meta.env.VITE_API_URL || ""}/api/v1${path}`,
     {
       ...request,
       headers,
@@ -33,6 +37,8 @@ export async function api<T>(
   ).catch(() => {
     throw new ApiError("การเชื่อมต่อขัดข้องหรือใช้เวลานานเกินไป โปรดลองใหม่", 0);
   });
+  if (response.status === 401 && !anonymous && PUBLIC_READ.test(path))
+    return api<T>(path, { ...options, anonymous: true });
   if (!response.ok)
     throw new ApiError(
       response.status === 409

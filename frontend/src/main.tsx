@@ -9,7 +9,19 @@ import {
   useLocation,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ArrowUpRight, BookOpen, Sprout, Menu, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  Sprout,
+  Menu,
+  X,
+  Home as HomeIcon,
+  GitCompareArrows,
+  Library,
+  CircleCheck,
+} from "lucide-react";
+import { LazyMotion, MotionConfig } from "motion/react";
+import { Reveal } from "./ui";
 import Home from "./pages/Home";
 import "./styles.css";
 import { AuthProvider, useAuth } from "./auth";
@@ -104,30 +116,46 @@ function App() {
             </div>
           }
         >
-          <Routes key={session?.user.id || "guest"}>
-            <Route path="/" element={<Home />} />
-            <Route path="/lessons" element={<Catalog />} />
-            <Route path="/lessons/:slug" element={<Lesson />} />
-            <Route path="/explore" element={<Explorer />} />
-            <Route path="/explore/:character" element={<KanjiDetail />} />
-            <Route path="/compare" element={<Compare />} />
-            <Route path="/review" element={<Review />} />
-            <Route path="/account" element={<Account />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/quiz" element={<Quiz />} />
-            <Route path="/quiz/:slug" element={<Quiz />} />
-            <Route
-              path="*"
-              element={
-                <div className="page section">
-                  <h1>ไม่พบหน้านี้</h1>
-                  <Link to="/">กลับหน้าแรก</Link>
-                </div>
-              }
-            />
-          </Routes>
+          <Reveal key={pathname}>
+            <Routes key={session?.user.id || "guest"}>
+              <Route path="/" element={<Home />} />
+              <Route path="/lessons" element={<Catalog />} />
+              <Route path="/lessons/:slug" element={<Lesson />} />
+              <Route path="/explore" element={<Explorer />} />
+              <Route path="/explore/:character" element={<KanjiDetail />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route path="/review" element={<Review />} />
+              <Route path="/account" element={<Account />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/quiz" element={<Quiz />} />
+              <Route path="/quiz/:slug" element={<Quiz />} />
+              <Route
+                path="*"
+                element={
+                  <div className="page section">
+                    <h1>ไม่พบหน้านี้</h1>
+                    <Link to="/">กลับหน้าแรก</Link>
+                  </div>
+                }
+              />
+            </Routes>
+          </Reveal>
         </Suspense>
       </main>
+      <nav className="mobile-nav" aria-label="เมนูมือถือ">
+        {[
+          { to: "/", label: "หน้าแรก", icon: HomeIcon },
+          { to: "/lessons", label: "บทเรียน", icon: BookOpen },
+          { to: "/compare", label: "เปรียบเทียบ", icon: GitCompareArrows },
+          { to: "/quiz", label: "แบบฝึกหัด", icon: CircleCheck },
+          { to: "/explore", label: "สำรวจ", icon: Library },
+        ].map(({ to, label, icon: Icon }) => (
+          <NavLink to={to} end={to === "/"} key={to}>
+            <Icon size={21} />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </nav>
       <footer>
         <Link to="/" className="footer-brand">
           <Sprout size={20} /> kanji connection
@@ -140,12 +168,18 @@ function App() {
 }
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={client}>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+    <MotionConfig reducedMotion="user">
+      <LazyMotion
+        features={() => import("./motion-features").then((m) => m.default)}
+      >
+        <QueryClientProvider client={client}>
+          <AuthProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthProvider>
+        </QueryClientProvider>
+      </LazyMotion>
+    </MotionConfig>
   </React.StrictMode>,
 );

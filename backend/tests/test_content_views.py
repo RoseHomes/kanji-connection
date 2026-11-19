@@ -112,13 +112,14 @@ def test_private_catalog_search_pagination_and_comparison_preserve_status(presen
     assert client.get("/api/v1/lessons").json() == []  # Public behavior unchanged.
 
 
-def test_lesson_sections_keep_page_references_without_answer_leaks_or_source_mutation(presentation):
+def test_lesson_sections_hide_provenance_without_answer_leaks_or_source_mutation(presentation):
     app, client, owner = presentation
     app.dependency_overrides[optional_identity] = lambda: Identity(owner)
     response = client.get("/api/v1/learning/lesson/chapter-02")
     assert response.status_code == 200
     section = response.json()["sections"][0]
-    assert section["pdf_pages"] == [24]
+    assert "pdf_pages" not in section and "provenance" not in response.json()
+    assert "id" not in response.json()
     assert len(section["blocks"]) == 1 and "answer" not in response.text
     with Session(app.state.engine) as db:
         assert db.query(LessonSection).one().blocks[0]["answers"] == ["secret answer"]

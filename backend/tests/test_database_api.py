@@ -99,7 +99,7 @@ def test_database_api_reads_stored_content_and_filters_private(db_client):
     assert body["title_th"] == "DB lesson from stored row"
     assert len(body["kanjis"]) == 3
     assert body["sections"] == [
-        {"kind": "text", "blocks": [{"text": "PUBLIC_BLOCK"}], "pdf_pages": []}
+        {"kind": "text", "blocks": [{"text": "PUBLIC_BLOCK"}]}
     ]
     assert "PRIVATE" not in str(body) and "secret" not in str(body)
     assert "PREMIUM" not in str(body)

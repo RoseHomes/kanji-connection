@@ -67,7 +67,7 @@ it("shows an actionable error even while a dependent query remains pending", () 
   );
   expect(screen.queryByText(/8000/)).not.toBeInTheDocument();
 });
-it("uses account-scoped catalog metadata, preserves private labels and clears an empty filter", async () => {
+it("uses the authorized catalog and clears an empty category without exposing review status", async () => {
   mocks.api.mockImplementation((url: string) =>
     Promise.resolve(
       url.includes("q=missing")
@@ -90,51 +90,122 @@ it("uses account-scoped catalog metadata, preserves private labels and clears an
     ),
   );
   mount(<Catalog />);
-  await screen.findByText("ส่วนตัว · รอตรวจ");
-  expect(screen.getByText(/ส่วนตัวสำหรับพัฒนา/)).toBeVisible();
+  await screen.findByRole("heading", { name: "ต้นไม้" });
+  expect(screen.queryByText(/รอตรวจ/)).not.toBeInTheDocument();
   expect(mocks.api.mock.calls[0][0]).toContain("/learning/catalog");
-  fireEvent.change(screen.getByRole("textbox", { name: "ค้นหาบทเรียน" }), {
-    target: { value: "missing" },
-  });
-  await screen.findByText("ไม่พบบทเรียนที่ตรงกับคำค้น");
-  fireEvent.click(screen.getByRole("button", { name: "ล้างตัวกรอง" }));
+  fireEvent.click(screen.getByRole("button", { name: "ทบทวน" }));
+  await screen.findByText("ยังไม่มีบทในกลุ่มนี้");
+  fireEvent.click(screen.getByRole("button", { name: "ดูทุกหมวด" }));
   await screen.findByRole("heading", { name: "ต้นไม้" });
 });
 it("paginates explorer results beyond the first 30 teaching cards", async () => {
   mocks.api.mockImplementation((url: string) =>
     Promise.resolve(
-      url.includes("offset=30")
-        ? [{ ...card, character: "林" }]
-        : Array.from({ length: 31 }, (_, i) => ({
-            ...card,
-            character: String.fromCharCode(0x4e00 + i),
-          })),
+      url.includes("catalog")
+        ? []
+        : url.includes("offset=30")
+          ? [{ ...card, character: "林" }]
+          : Array.from({ length: 31 }, (_, i) => ({
+              ...card,
+              character: String.fromCharCode(0x4e00 + i),
+            })),
     ),
   );
   mount(<Explorer />);
-  await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(30));
-  fireEvent.click(screen.getByRole("button", { name: "ถัดไป" }));
-  await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(1));
-  expect(screen.getByText("หน้า 2")).toBeVisible();
-  expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
-});
-it("accepts a new comparison pair without showing the unrelated tree explanation", async () => {
-  mocks.api.mockResolvedValue([card, { ...card, character: "林" }]);
-  mount(<Compare />);
-  await screen.findByRole("textbox", { name: "ตัวอักษรที่ต้องการเปรียบเทียบ" });
-  fireEvent.change(
-    screen.getByRole("textbox", { name: "ตัวอักษรที่ต้องการเปรียบเทียบ" }),
-    { target: { value: "火,水" } },
+  await waitFor(() =>
+    expect(document.querySelectorAll(".explorer-tile")).toHaveLength(30),
   );
-  fireEvent.click(screen.getByRole("button", { name: "เปรียบเทียบ" }));
+  fireEvent.click(screen.getByRole("button", { name: /สำรวจชุดถัดไป/ }));
+  await waitFor(() =>
+    expect(document.querySelectorAll(".explorer-tile")).toHaveLength(1),
+  );
+  expect(screen.getByRole("button", { name: /สำรวจชุดถัดไป/ })).toBeDisabled();
+});
+it("switches curated comparison groups with zero text entry", async () => {
+  const character = (g: string) => ({
+    character: g,
+    meaning_th: g,
+    memory_note: "reviewed cue",
+    reading: { form: g, reading: "き", label_th: "คำอ่านตัวอย่าง" },
+    example: null,
+  });
+  mocks.api.mockResolvedValue([
+    {
+      id: "wood",
+      chapter: 2,
+      slug: "chapter-02",
+      title: "木 / 林",
+      category: "รูปพื้นฐาน",
+      difference_th: "ไม้หนึ่งต้นและสองต้น",
+      characters: [character("木"), character("林")],
+    },
+    {
+      id: "fire",
+      chapter: 4,
+      slug: "chapter-04",
+      title: "火 / 水",
+      category: "รูปพื้นฐาน",
+      difference_th: "REVIEWED_FIRE_WATER",
+      characters: [character("火"), character("水")],
+    },
+  ]);
+  mount(<Compare />);
+  fireEvent.click(await screen.findByRole("button", { name: /火 \/ 水/ }));
+  await screen.findByText("REVIEWED_FIRE_WATER");
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  expect(screen.queryByText("ไม้หนึ่งต้นและสองต้น")).not.toBeInTheDocument();
+  expect(screen.getByRole("table")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "ส่วนประกอบ" }));
+  await screen.findByText("ยังไม่มีชุดในหมวดนี้");
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "ดูชุดทั้งหมด" }));
+  await screen.findByRole("table");
+});
+
+it("does not display all Kanji when an explorer category has no chapters", async () => {
+  mocks.api.mockImplementation((path: string) =>
+    Promise.resolve(
+      path.includes("catalog")
+        ? [{ chapter: 2, slug: "chapter-02", title_th: "ต้นไม้" }]
+        : [card],
+    ),
+  );
+  mount(<Explorer />);
+  await waitFor(() =>
+    expect(document.querySelectorAll(".explorer-tile")).toHaveLength(1),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "ทบทวน" }));
+  await screen.findByText("ยังไม่พบตัวอักษรในชุดนี้");
+  expect(document.querySelectorAll(".explorer-tile")).toHaveLength(0);
+});
+
+it("resolves a category chosen before the chapter catalog finishes loading", async () => {
+  let finish: (value: unknown) => void = () => {};
+  const pending = new Promise((resolve) => {
+    finish = resolve;
+  });
+  mocks.api.mockImplementation((path: string) =>
+    path.includes("catalog")
+      ? pending
+      : Promise.resolve(
+          path.includes("/learning/lesson/")
+            ? { kanjis: [{ ...card, character: "林" }] }
+            : [card],
+        ),
+  );
+  mount(<Explorer />);
+  fireEvent.click(screen.getByRole("button", { name: "รูปพื้นฐาน" }));
+  finish([{ chapter: 2, slug: "chapter-02", title_th: "ต้นไม้" }]);
   await waitFor(() =>
     expect(
-      mocks.api.mock.calls.some((c) =>
-        c[0].includes(encodeURIComponent("火,水")),
+      mocks.api.mock.calls.some(
+        (call) => call[0] === "/learning/lesson/chapter-02",
       ),
     ).toBe(true),
   );
-  expect(screen.queryByText("ส่วนประกอบร่วมที่ระบุในข้อมูล")).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(document.querySelector(".explorer-glyph")).toHaveTextContent("林"),
+  );
 });
 it("does not call an empty flashcard collection a completed review", async () => {
   mocks.api.mockImplementation((url: string) =>

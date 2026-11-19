@@ -5,6 +5,12 @@ Earlier counts, root-ignore/frontend behavior and requirements-only dependency
 checks are preserved as historical evidence, not proof of the current Vercel
 installation path; use the current deployment runbook.
 
+> Update 2026-11-19: the `2026-11-19-final-v2` edition has since been published
+> in Supabase. All 30 lessons are `published`/`free`/`catalog_visible`, with 94
+> comparison groups and 450 questions readable anonymously through the backend.
+> The publication-status rows below describe the earlier pre-release inspection;
+> account writes and hosted development access remain disabled.
+
 Status: prepared locally, **not deployed**. The chosen layout is two Vercel
 projects: frontend/ (static Vite) and backend/ (FastAPI index.py). Exact
 settings and owner steps are in [DEPLOYMENT.md](../guides/DEPLOYMENT.md). No

@@ -9,6 +9,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Home from "./Home";
+import { LazyMotion, domAnimation } from "motion/react";
 const mocks = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock("../api", () => ({ api: mocks.api }));
 afterEach(() => {
@@ -23,29 +24,42 @@ function mount() {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <Home />
+        <LazyMotion features={domAnimation}><Home /></LazyMotion>
       </QueryClientProvider>
     </MemoryRouter>,
   );
 }
-it("previews actual eligible API cards and changes the displayed reading", async () => {
+it("previews actual authorized comparison cards with clickable readings", async () => {
   mocks.api.mockImplementation((path: string) =>
     Promise.resolve(
-      path.startsWith("/kanjis")
+      path.includes("comparison-groups")
         ? [
             {
-              character: "木",
-              meaning_th: "ต้นไม้",
-              kunyomi: ["き"],
-              onyomi: [],
-              review_status: "sample",
-            },
-            {
-              character: "森",
-              meaning_th: "ป่าไม้",
-              kunyomi: ["もり"],
-              onyomi: [],
-              review_status: "sample",
+              id: "wood",
+              title: "木 / 森",
+              chapter: 2,
+              characters: [
+                {
+                  character: "木",
+                  meaning_th: "ต้นไม้",
+                  memory_note: "ลำต้นและกิ่งไม้",
+                  reading: {
+                    form: "木",
+                    reading: "き",
+                    label_th: "คำอ่านตัวอย่าง",
+                  },
+                },
+                {
+                  character: "森",
+                  meaning_th: "ป่าไม้",
+                  memory_note: "ต้นไม้สามต้นรวมกัน",
+                  reading: {
+                    form: "森",
+                    reading: "もり",
+                    label_th: "คำอ่านตัวอย่าง",
+                  },
+                },
+              ],
             },
           ]
         : [],
@@ -53,57 +67,30 @@ it("previews actual eligible API cards and changes the displayed reading", async
   );
   mount();
   fireEvent.click(await screen.findByRole("button", { name: "森" }));
-  expect(screen.getByText("もり")).toBeVisible();
+  await waitFor(() => expect(screen.getByText("もり")).toBeVisible());
   expect(screen.getByRole("button", { name: "森" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  expect(mocks.api.mock.calls.every((call) => call[1].anonymous === true)).toBe(
-    true,
-  );
+  expect(
+    screen.getByRole("link", { name: /ลองดูความต่างให้ชัดขึ้น/ }),
+  ).toHaveAttribute("href", "/compare?group=wood");
 });
-it("shows publication empty states without fabricating lessons", async () => {
+it("shows honest empty states without fabricated chapters", async () => {
   mocks.api.mockResolvedValue([]);
   mount();
   await screen.findByRole("heading", { name: "บทเรียนสาธารณะกำลังเตรียมพร้อม" });
   expect(document.querySelectorAll(".lesson-card")).toHaveLength(0);
-  expect(screen.getByRole("link", { name: /เลือกบทเรียน/ })).toHaveAttribute(
-    "href",
-    "/lessons",
+  expect(document.querySelectorAll(".hero-kanji-pickers button")).toHaveLength(
+    0,
   );
 });
-it("never features private or needs-review response entries", async () => {
-  mocks.api.mockImplementation((path: string) =>
-    Promise.resolve(
-      path.startsWith("/kanjis")
-        ? [
-            {
-              character: "林",
-              meaning_th: "PRIVATE_CARD",
-              review_status: "needs_review",
-              kunyomi: [],
-              onyomi: [],
-            },
-          ]
-        : [
-            {
-              id: 1,
-              chapter: 1,
-              title_th: "PRIVATE_TITLE",
-              slug: "private",
-              anchors: [],
-              status: "needs_review",
-              is_available: true,
-              private_development: true,
-            },
-          ],
-    ),
-  );
+it("uses authorized learner routes and never fetches personal records", async () => {
+  mocks.api.mockResolvedValue([]);
   mount();
-  await screen.findByText("ตัวอักษรตกแต่ง · บัตรเรียนจะแสดงเมื่อมีเนื้อหาเผยแพร่");
-  await waitFor(() =>
-    expect(screen.queryByText("กำลังโหลดข้อมูล…")).not.toBeInTheDocument(),
-  );
-  expect(screen.queryByText("PRIVATE_CARD")).not.toBeInTheDocument();
-  expect(screen.queryByText("PRIVATE_TITLE")).not.toBeInTheDocument();
+  await screen.findByRole("heading", { name: "บทเรียนสาธารณะกำลังเตรียมพร้อม" });
+  expect(mocks.api.mock.calls.map((c) => c[0]).sort()).toEqual([
+    "/learning/catalog",
+    "/learning/comparison-groups",
+  ]);
 });

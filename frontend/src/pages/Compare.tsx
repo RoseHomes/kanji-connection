@@ -1,167 +1,298 @@
-import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowRight, ArrowUpRight, GitCompareArrows } from "lucide-react";
 import { api } from "../api";
-import type { Kanji } from "../types";
+import { DataState, EmptyState, Reading } from "../components";
+import { Chips, PageHeading, Reveal } from "../ui";
+import { ChoicePicker } from "../selection-controls";
+import { ReturnToLesson } from "../lesson-return";
 import {
-  DataState,
-  KanjiVisual,
-  PrivateNotice,
-  EmptyState,
-} from "../components";
-import { useAuth } from "../auth";
+  chapterGroup,
+  learningGroups,
+  type ComparisonGroup,
+} from "../presentation-types";
 export default function Compare() {
-  const { session, ready } = useAuth();
   const [params, setParams] = useSearchParams();
-  const picker = useQuery({
-    queryKey: ["comparison-picker", session?.user.id],
-    queryFn: () =>
-      api<Kanji[]>("/learning/kanjis?limit=24", { anonymous: !session }),
-    enabled: ready || !session,
-  });
-  const selected = (
-    params.get("characters") ??
-    picker.data
-      ?.slice(0, 2)
-      .map((k) => k.character)
-      .join(",") ??
-    ""
-  )
-    .split(",")
-    .filter(Boolean);
-  const [input, setInput] = useState(selected.join(","));
-  const inputEdited = useRef(false);
-  const [message, setMessage] = useState("");
-  const selectionKey = selected.join(",");
+  const [category, setCategory] = useState("all");
+  const [partner, setPartner] = useState(1);
+  const [mobile, setMobile] = useState(
+    () => window.matchMedia("(max-width: 700px)").matches,
+  );
   useEffect(() => {
-    if (!inputEdited.current) setInput(selectionKey);
-    setMessage("");
-  }, [selectionKey]);
-  const valid =
-    selected.length >= 2 &&
-    selected.length <= 4 &&
-    new Set(selected).size === selected.length &&
-    selected.every((c) => Array.from(c).length === 1);
-  function choose(chars: string[]) {
-    inputEdited.current = false;
-    setParams({ characters: chars.join(",") });
-    setInput(chars.join(","));
-    setMessage("");
-  }
-  const { data, isPending, error, refetch } = useQuery({
-    queryKey: ["compare", session?.user.id, selected],
-    queryFn: () =>
-      api<Kanji[]>(
-        `/learning/compare?characters=${encodeURIComponent(selected.join(","))}`,
-        { anonymous: !session },
-      ),
-    enabled: (ready || !session) && valid,
+    const q = window.matchMedia("(max-width: 700px)");
+    const f = () => setMobile(q.matches);
+    q.addEventListener("change", f);
+    return () => q.removeEventListener("change", f);
+  }, []);
+  const groups = useQuery({
+    queryKey: ["comparison-groups"],
+    queryFn: () => api<ComparisonGroup[]>("/learning/comparison-groups"),
   });
+  const filtered =
+    groups.data?.filter(
+      (g) => category === "all" || chapterGroup(g.chapter) === category,
+    ) || [];
+  const selected =
+    filtered.find((g) => g.id === params.get("group")) ||
+    filtered.find(
+      (g) =>
+        g.characters.map((c) => c.character).join(",") ===
+        params.get("characters"),
+    ) ||
+    filtered[0];
+  const pick = (id: string) => {
+    const next = new URLSearchParams(params);
+    next.set("group", id);
+    next.delete("characters");
+    setParams(next, { replace: true, preventScrollReset: true });
+    setPartner(1);
+    if (mobile)
+      requestAnimationFrame(() =>
+        document.querySelector(".comparison-workspace")?.scrollIntoView({
+          block: "start",
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "auto"
+            : "smooth",
+        }),
+      );
+  };
+  const columns = selected
+    ? mobile && selected.characters.length > 2
+      ? [
+          selected.characters[0],
+          selected.characters[
+            Math.min(partner, selected.characters.length - 1)
+          ],
+        ]
+      : selected.characters
+    : [];
   return (
-    <div className="page section">
-      <p className="eyebrow">SIDE BY SIDE</p>
-      <h1>ยิ่งมองใกล้ ยิ่งเห็นความต่าง</h1>
-      <p className="lead">เลือก 2–4 ตัวเพื่อเทียบรูปร่าง การอ่าน และความหมาย</p>
-      <form
-        className="comparison-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const chars = [...new Set(input.split(/[\s,、，]+/).filter(Boolean))];
-          if (
-            chars.length < 2 ||
-            chars.length > 4 ||
-            chars.some((c) => Array.from(c).length !== 1)
-          ) {
-            setMessage("ใส่คันจิ 2–4 ตัว คั่นด้วยช่องว่างหรือจุลภาค");
-            return;
-          }
-          choose(chars);
-        }}
-      >
-        <label htmlFor="compare-characters">ตัวอักษรที่ต้องการเปรียบเทียบ</label>
-        <div>
-          <input
-            id="compare-characters"
-            value={input}
-            maxLength={30}
-            onChange={(e) => {
-              inputEdited.current = true;
-              setInput(e.target.value);
-            }}
-            lang="ja"
-          />
-          <button type="submit">เปรียบเทียบ</button>
-        </div>
-      </form>
-      {(message || (!valid && params.has("characters"))) && (
-        <p role="alert">{message || "ลิงก์นี้ต้องระบุคันจิ 2–4 ตัว"}</p>
-      )}
-      <div className="filters" role="group" aria-label="เลือกคันจิสำหรับเปรียบเทียบ">
-        {picker.data?.map(({ character: c }) => (
-          <button
-            key={c}
-            lang="ja"
-            aria-pressed={selected.includes(c)}
-            disabled={
-              (selected.includes(c) && selected.length === 2) ||
-              (!selected.includes(c) && selected.length >= 4)
-            }
-            onClick={() =>
-              choose(
-                selected.includes(c)
-                  ? selected.filter((x) => x !== c)
-                  : [...selected, c],
-              )
-            }
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+    <div className="page section compare-page">
+      <ReturnToLesson />
+      <PageHeading eyebrow="SPOT THE DIFFERENCE" title="คล้ายตรงไหน ต่างตรงนี้">
+        <p>เลือกชุดคันจิ แล้วดูความต่างข้างกันได้ทันที ไม่ต้องพิมพ์</p>
+      </PageHeading>
       <DataState
-        loading={picker.isPending || (valid && isPending)}
-        error={error || picker.error}
-        retry={() => {
-          void refetch();
-          void picker.refetch();
-        }}
+        loading={groups.isPending}
+        error={groups.error}
+        retry={() => void groups.refetch()}
       />
-      {picker.data?.length === 0 && !params.has("characters") && (
-        <EmptyState title="ยังไม่มีคันจิที่เผยแพร่ให้เปรียบเทียบ">
-          <p>เมื่อมีบัตรที่ผ่านการอนุมัติแล้ว คุณจะเลือกดูข้างกันได้ที่นี่</p>
+      {groups.data?.length === 0 && (
+        <EmptyState title="ชุดเปรียบเทียบกำลังเตรียมพร้อม">
+          <p>เมื่อมีบทเรียนที่เข้าถึงได้ ชุดที่เกี่ยวข้องจะแสดงที่นี่</p>
+          <Link className="button primary" to="/lessons">
+            เลือกบทเรียน
+          </Link>
         </EmptyState>
       )}
-      <div className="compare-grid">
-        {data?.map((k) => (
-          <article className="comparison" key={k.character}>
-            <KanjiVisual character={k.character} meaning={k.meaning_th} />
-            <dl>
-              <dt>คุนโยมิ</dt>
-              <dd lang="ja">{k.kunyomi.join("・") || "—"}</dd>
-              <dt>อนโยมิ</dt>
-              <dd lang="ja">{k.onyomi.join("・") || "—"}</dd>
-              <dt>จำนวนขีด</dt>
-              <dd>{k.strokes ?? "ยังไม่ระบุ"}</dd>
-              <dt>ส่วนประกอบที่สังเกต</dt>
-              <dd lang="ja">{k.component || "—"}</dd>
-            </dl>
-            <p>{k.note_th}</p>
-          </article>
-        ))}
-      </div>
-      {data?.some(
-        (k) =>
-          !["published", "sample", "verified_sample"].includes(k.review_status),
-      ) && <PrivateNotice />}
-      {data &&
-        data.length > 1 &&
-        data[0].component &&
-        data.every((k) => k.component === data[0].component) && (
-          <aside className="notice">
-            <strong>ส่วนประกอบร่วมที่ระบุในข้อมูล</strong>
-            <p lang="ja">{data[0].component}</p>
-          </aside>
-        )}
+      {!!groups.data?.length && (
+        <>
+          <Chips
+            label="หมวดชุดเปรียบเทียบ"
+            items={learningGroups}
+            value={category}
+            onChange={(v) => {
+              setCategory(v);
+              const first = groups.data.find(
+                (g) => v === "all" || chapterGroup(g.chapter) === v,
+              );
+              if (first) pick(first.id);
+            }}
+          />
+          {!filtered.length && (
+            <EmptyState title="ยังไม่มีชุดในหมวดนี้">
+              <button
+                onClick={() => {
+                  setCategory("all");
+                  const next = new URLSearchParams(params);
+                  next.delete("group");
+                  next.delete("characters");
+                  setParams(next);
+                }}
+              >
+                ดูชุดทั้งหมด
+              </button>
+            </EmptyState>
+          )}
+          <div className="comparison-layout">
+            <aside className="group-directory" id="choose-groups">
+              <div className="section-title">
+                <h2>เลือกชุดที่อยากรู้จัก</h2>
+                <span>{filtered.length} ชุด</span>
+              </div>
+              <ChoicePicker
+                label="เลือกบทเปรียบเทียบ"
+                value={selected?.id || ""}
+                options={filtered.map((g) => ({
+                  value: g.id,
+                  label: `บท ${g.chapter} · ${g.title}`,
+                  description: g.category,
+                }))}
+                onChange={pick}
+              />
+              <div className="group-buttons" role="group" aria-label="ชุดคันจิ">
+                {filtered.map((g) => (
+                  <button
+                    key={g.id}
+                    aria-pressed={selected?.id === g.id}
+                    className={
+                      selected?.id === g.id
+                        ? "group-pick selected"
+                        : "group-pick"
+                    }
+                    onClick={() => pick(g.id)}
+                  >
+                    <span lang="ja">{g.title}</span>
+                    <small>
+                      บท {String(g.chapter).padStart(2, "0")} · {g.category}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            </aside>
+            {selected && (
+              <Reveal key={selected.id} className="comparison-workspace">
+                <div className="comparison-heading">
+                  <span className="icon-tile">
+                    <GitCompareArrows size={24} />
+                  </span>
+                  <div>
+                    <p className="eyebrow">มองรูปเดียวกันให้ต่างออกไป</p>
+                    <h2 lang="ja">{selected.title}</h2>
+                    <p className="sr-only" role="status" aria-live="polite">
+                      กำลังแสดงตาราง {selected.title}
+                    </p>
+                  </div>
+                </div>
+                {mobile && selected.characters.length > 2 && (
+                  <Chips
+                    label="เลือกคู่ที่แสดง"
+                    items={selected.characters.slice(1).map((c, i) => ({
+                      value: String(i + 1),
+                      label: `${selected.characters[0].character} / ${c.character}`,
+                    }))}
+                    value={String(partner)}
+                    onChange={(v) => setPartner(Number(v))}
+                  />
+                )}
+                <div className="comparison-table-wrap">
+                  <table className="comparison-table">
+                    <caption>
+                      คำอ่าน ความหมาย และจุดสังเกตของ {selected.title}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">มองใกล้อีกนิด</th>
+                        {columns.map((c) => (
+                          <th scope="col" key={c.character}>
+                            <span className="table-glyph" lang="ja">
+                              {c.character}
+                            </span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th scope="row">คำอ่าน</th>
+                        {columns.map((c) => (
+                          <td key={c.character}>
+                            <small>{c.reading.label_th}</small>
+                            {c.reading.kind === "component" ? (
+                              <span lang="ja">{c.reading.reading}</span>
+                            ) : (
+                              <Reading
+                                text={c.reading.form}
+                                reading={c.reading.reading}
+                              />
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <th scope="row">ความหมาย</th>
+                        {columns.map((c) => (
+                          <td key={c.character}>
+                            <strong>{c.meaning_th}</strong>
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <th scope="row">
+                          ภาพช่วยจำ
+                          <br />
+                          และส่วนรูป
+                        </th>
+                        {columns.map((c) => (
+                          <td key={c.character}>{c.memory_note}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <th scope="row">คำตัวอย่าง</th>
+                        {columns.map((c) => (
+                          <td key={c.character}>
+                            {c.example ? (
+                              <>
+                                <Reading
+                                  text={c.example.word}
+                                  reading={c.example.reading}
+                                />
+                                <p>{c.example.meaning_th}</p>
+                                {c.example.optional && (
+                                  <small className="supplement-label">
+                                    คำเสริม · เลือกเรียนได้
+                                  </small>
+                                )}
+                              </>
+                            ) : (
+                              <span>ดูชื่อส่วนประกอบและรูปในบทเรียน</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="difference-note">
+                  <strong>จุดสังเกตเมื่อวางข้างกัน</strong>
+                  <p>{selected.difference_th}</p>
+                </div>
+                <div className="hero-actions">
+                  <Link
+                    className="button primary"
+                    to={`/quiz/${selected.slug}`}
+                  >
+                    ฝึกแยกตัวอักษร
+                    <ArrowRight size={17} />
+                  </Link>
+                  <Link
+                    className="button secondary"
+                    to={`/lessons/${selected.slug}`}
+                  >
+                    ดูในบทเรียน
+                    <ArrowUpRight size={17} />
+                  </Link>
+                  <a
+                    className="text-link"
+                    href="#choose-groups"
+                    onClick={() =>
+                      document
+                        .querySelector<HTMLSelectElement>(
+                          ".select-label select",
+                        )
+                        ?.focus()
+                    }
+                  >
+                    เลือกชุดอื่น
+                  </a>
+                </div>
+              </Reveal>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

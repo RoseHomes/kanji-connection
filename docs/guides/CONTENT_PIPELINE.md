@@ -1,5 +1,16 @@
 # Structured content pipeline
 
+## Active editorial working edition
+
+When the final v2 overlay is available locally, `scripts/build_book.py` builds
+the corrected working edition under `private/editorial-working` and preserves
+the extraction and earlier audit outputs. See [local editorial preview](EDITORIAL_PREVIEW.md)
+for the active build, guarded synchronization and protected preview commands.
+The source-extraction pipeline below describes the historical baseline; its
+insert-only rehearsal and reports do not update the working database.
+
+## Original extraction and baseline pipeline
+
 Use the immutable source directory private/kanji-connection-extracted/. It
 contains 30 chapter JSON files, the matching aggregate, extraction report and
 text for all 243 source PDF pages. Never modify, move or regenerate those files.

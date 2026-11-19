@@ -1,6 +1,8 @@
 import { ArrowRight, RotateCcw, BookOpen, LockKeyhole } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Kanji } from "./types";
+import { StudyContent } from "./study-content";
+import { useLessonReturn, withLessonReturn } from "./lesson-return";
 export function DataState({
   loading,
   error,
@@ -111,65 +113,49 @@ export function EmptyState({
   );
 }
 export function PrivateNotice() {
-  return <p className="notice">ส่วนตัวสำหรับพัฒนา · ยังไม่ผ่านการอนุมัติเผยแพร่</p>;
+  return <p className="notice">พื้นที่ทดลองเรียนส่วนตัว · เนื้อหายังไม่เปิดสาธารณะ</p>;
 }
 export function KanjiCard({
   item,
   source,
+  focused = false,
+  allowDetail = false,
 }: {
   item: Kanji;
   source?: import("./types").SourceCard;
+  focused?: boolean;
+  allowDetail?: boolean;
 }) {
+  const returnTo = useLessonReturn();
   return (
-    <article className="kanji-card">
+    <article
+      className={`kanji-card${source?.study?.role === "supplementary" ? " supplementary-card" : ""}`}
+      data-study-role={source?.study?.role}
+    >
       {!["published", "sample", "verified_sample"].includes(
         item.review_status,
-      ) && <small className="review-badge">รอตรวจเนื้อหา</small>}
+      ) &&
+        source?.study?.role === "supplementary" && (
+          <small className="supplement-label">เลือกเรียนได้</small>
+        )}
       <KanjiVisual
         character={item.character}
         meaning={source?.meaning_th ?? item.meaning_th}
       />
-      <p lang="ja">{item.kunyomi.join(" · ")}</p>
-      <small>
-        音 <span lang="ja">{item.onyomi.join("・") || "—"}</span> ·{" "}
-        {item.strokes === null ? "ยังไม่ระบุจำนวนขีด" : `${item.strokes} ขีด`}
-      </small>
+      {!source?.study && <p lang="ja">{item.kunyomi.join(" · ")}</p>}
+      {!source?.study && (
+        <small>
+          音 <span lang="ja">{item.onyomi.join("・") || "—"}</span> ·{" "}
+          {item.strokes === null ? "ยังไม่ระบุจำนวนขีด" : `${item.strokes} ขีด`}
+        </small>
+      )}
       <p>{item.note_th}</p>
-      {source && (
+      {source?.study && <StudyContent card={source} focused={focused} />}
+      {source && !source.study && (
         <div className="card-example">
-          {source.editorial_reading_scope ? (
-            <div className="reading-context">
-              <p>
-                คำอ่านตามแหล่งข้อมูล:{" "}
-                <span lang="ja">
-                  {source.editorial_reading_scope.source_reading}
-                </span>
-              </p>
-              <p>
-                ดัชนีคำอ่านแยก:{" "}
-                <span lang="ja">
-                  {source.editorial_reading_scope.effective_reading}
-                </span>
-              </p>
-              <details>
-                <summary>หมายเหตุคำอ่านตามบริบท</summary>
-                <p lang="en">{source.editorial_reading_scope.note}</p>
-                <p lang="ja">
-                  {source.editorial_reading_scope.context_forms.join("・")}
-                </p>
-              </details>
-            </div>
-          ) : (
-            <p>
-              <Reading
-                text={source.character}
-                reading={source.reading_example}
-              />
-            </p>
-          )}
+          <small>ตัวอย่างคำที่ใช้ตัวอักษรนี้</small>
           <p lang="ja">{source.example}</p>
           <p>{source.memory_note}</p>
-          <small>PDF หน้า {source.pdf_page}</small>
         </div>
       )}
       {/^https?:\/\//.test(item.source_url) && (
@@ -177,12 +163,16 @@ export function KanjiCard({
           ดูแหล่งอ้างอิง <ArrowRight size={14} />
         </a>
       )}
-      {["published", "sample", "verified_sample"].includes(
-        item.review_status,
-      ) && (
+      {(allowDetail ||
+        ["published", "sample", "verified_sample"].includes(
+          item.review_status,
+        )) && (
         <Link
           className="card-detail-link"
-          to={`/explore/${encodeURIComponent(item.character)}`}
+          to={withLessonReturn(
+            `/explore/${encodeURIComponent(item.character)}`,
+            returnTo,
+          )}
         >
           ดูรายละเอียด <span lang="ja">{item.character}</span>
           <ArrowRight size={16} />

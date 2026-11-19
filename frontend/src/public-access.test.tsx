@@ -46,7 +46,7 @@ it("shows a public catalog empty state without offering signin as an editorial b
   expect(
     screen.queryByRole("link", { name: /เข้าสู่ระบบ/ }),
   ).not.toBeInTheDocument();
-  expect(mocks.api.mock.calls[0][1]).toEqual({ anonymous: true });
+  expect(mocks.api.mock.calls[0][0]).toBe("/learning/catalog");
 });
 it("opens public practice without requesting personal records", async () => {
   mocks.api.mockImplementation((path: string) =>
@@ -57,7 +57,7 @@ it("opens public practice without requesting personal records", async () => {
     ),
   );
   mount(<Quiz />);
-  await screen.findByRole("heading", { name: "แบบฝึกหัดสาธารณะกำลังเตรียมพร้อม" });
+  await screen.findByRole("heading", { name: "แบบฝึกหัดกำลังเตรียมพร้อม" });
   expect(
     mocks.api.mock.calls.every((call) => !call[0].startsWith("/me/")),
   ).toBe(true);

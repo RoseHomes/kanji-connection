@@ -37,7 +37,30 @@ export interface SourceCard {
   reading_example: string;
   example: string;
   memory_note: string;
-  pdf_page: number;
+  pdf_page?: number;
+  study?: {
+    schema_version: number;
+    role: "core" | "component" | "supplementary";
+    required: boolean;
+    reading: {
+      kind: string;
+      label_th: string;
+      form: string;
+      reading: string;
+      note_th: string;
+    };
+    example: {
+      word: string;
+      reading: string;
+      meaning_th?: string | null;
+      target_scope: string;
+      role: string;
+      optional: boolean;
+    } | null;
+    scope_note_th: string;
+    mnemonic_note_th: string;
+    revision_id?: string;
+  };
   editorial_reading_scope?: {
     source_reading: string;
     effective_reading: string;
@@ -52,8 +75,16 @@ export interface ComparisonItem {
   meaning_th?: string;
   label_th?: string;
   kind?: string;
+  study_reading?: {
+    kind: string;
+    label_th: string;
+    form: string;
+    reading: string;
+  };
 }
 export interface SectionBlock {
+  text?: string;
+  practice_count?: number;
   subtitle_th?: string;
   category?: string;
   cards?: SourceCard[];
@@ -80,8 +111,24 @@ export interface SectionBlock {
     word: string;
     reading: string;
     meaning_th: string;
-    pdf_page: number;
+    pdf_page?: number;
+    usage_notes?: string;
   }[];
+  sentences?: {
+    text: string;
+    reading: string;
+    meaning_th: string;
+    note_th: string;
+    source_url: string;
+  }[];
+  comparison_rubric?: {
+    model_response_th: string;
+    accepted_feature_th: string;
+    incorrect_response_th: string;
+    max_score: number;
+    auto_scorable: boolean;
+  };
+  instructions_th?: string;
   exercises?: {
     number: number;
     prompt: string;
@@ -93,9 +140,10 @@ export interface SectionBlock {
 export interface LessonSection {
   kind: string;
   blocks: SectionBlock[];
-  pdf_pages: number[];
+  pdf_pages?: number[];
 }
 export interface Health {
   content_mode: string;
   account_writes_enabled?: boolean;
+  editorial_preview?: boolean;
 }

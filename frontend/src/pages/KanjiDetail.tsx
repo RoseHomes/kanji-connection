@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { api } from "../api";
 import { DataState, EmptyState, KanjiVisual, Reading } from "../components";
 import type { Kanji } from "../types";
+import {
+  ReturnToLesson,
+  safeLessonReturn,
+  withLessonReturn,
+} from "../lesson-return";
 interface Vocabulary {
-  id: number;
   written_form: string;
   reading: string;
   meaning_th: string;
@@ -16,6 +20,8 @@ interface Relations {
   relations?: { character: string; type: string; explanation_th: string }[];
 }
 export default function KanjiDetail() {
+  const [params] = useSearchParams();
+  const returnTo = safeLessonReturn(params.get("returnTo")) || "";
   const { character = "" } = useParams();
   const path = `/kanjis/${encodeURIComponent(character)}`;
   const card = useQuery({
@@ -35,6 +41,7 @@ export default function KanjiDetail() {
   });
   return (
     <div className="page section">
+      <ReturnToLesson />
       <Link className="text-link" to="/explore">
         <ArrowLeft size={16} /> กลับไปคลังคันจิ
       </Link>
@@ -93,7 +100,10 @@ export default function KanjiDetail() {
             )}
             <div className="vocabulary-list">
               {vocabulary.data?.map((v) => (
-                <article className="vocabulary-item" key={v.id}>
+                <article
+                  className="vocabulary-item"
+                  key={`${v.written_form}:${v.reading}`}
+                >
                   <Reading text={v.written_form} reading={v.reading} />
                   <p>{v.meaning_th}</p>
                   {v.usage_notes && <small>{v.usage_notes}</small>}
@@ -115,7 +125,10 @@ export default function KanjiDetail() {
               {relations.data?.related.map((c) => (
                 <Link
                   key={c}
-                  to={`/explore/${encodeURIComponent(c)}`}
+                  to={withLessonReturn(
+                    `/explore/${encodeURIComponent(c)}`,
+                    returnTo,
+                  )}
                   lang="ja"
                 >
                   {c}
@@ -132,7 +145,10 @@ export default function KanjiDetail() {
             {relations.data && relations.data.related.length > 0 && (
               <Link
                 className="button"
-                to={`/compare?characters=${encodeURIComponent([character, ...relations.data.related.slice(0, 3)].join(","))}`}
+                to={withLessonReturn(
+                  `/compare?characters=${encodeURIComponent([character, ...relations.data.related.slice(0, 3)].join(","))}`,
+                  returnTo,
+                )}
               >
                 เปิดดูข้างกัน <ArrowUpRight size={16} />
               </Link>

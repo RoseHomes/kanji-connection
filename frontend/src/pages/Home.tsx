@@ -5,150 +5,178 @@ import {
   ArrowRight,
   ArrowUpRight,
   Eye,
-  Layers,
   GitCompareArrows,
   Brain,
-  BookOpen,
+  CircleCheck,
 } from "lucide-react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { api } from "../api";
-import type { Kanji, Lesson } from "../types";
-import { DataState, EmptyState, SectionTitle } from "../components";
-
+import type { Lesson } from "../types";
+import type { ComparisonGroup } from "../presentation-types";
+import { DataState, EmptyState, Reading } from "../components";
+import { Reveal } from "../ui";
 export default function Home() {
-  const [active, setActive] = useState(0);
-  const cards = useQuery({
-    queryKey: ["public-preview"],
-    queryFn: () => api<Kanji[]>("/kanjis?limit=3", { anonymous: true }),
-  });
+  const reduce = useReducedMotion();
   const lessons = useQuery({
-    queryKey: ["public-featured"],
-    queryFn: () => api<Lesson[]>("/lessons?limit=3", { anonymous: true }),
+    queryKey: ["featured-catalog"],
+    queryFn: () => api<Lesson[]>("/learning/catalog"),
   });
-  const publicCards = cards.data?.filter((item) =>
-    ["published", "sample", "verified_sample"].includes(item.review_status),
-  );
-  const card = publicCards?.[active] ?? publicCards?.[0];
+  const groups = useQuery({
+    queryKey: ["comparison-groups"],
+    queryFn: () => api<ComparisonGroup[]>("/learning/comparison-groups"),
+  });
+  const [active, setActive] = useState(0);
+  const group =
+    groups.data?.find((g) => g.characters.length === 3) || groups.data?.[0];
+  const card = group?.characters[active % group.characters.length];
   return (
     <>
       <section className="page home-hero">
-        <div className="hero-copy">
+        <Reveal className="hero-copy">
           <p className="eyebrow">
-            <span className="accent-line" /> A NEW WAY TO NOTICE
+            <span className="tiny-sun" /> SMALL DETAILS. BIG CONNECTIONS.
           </p>
           <h1>
-            คันจิที่เคยไกลตัว
+            คล้ายกันนิดเดียว
             <br />
-            <em>ค่อย ๆ เข้าใจ</em>
-            <br />
-            ได้ทีละความเชื่อมโยง<span className="hero-period">。</span>
+            <span className="hero-highlight">เข้าใจต่างกันได้</span>
+            <span className="coral">。</span>
           </h1>
           <p className="hero-description">
-            ให้เวลากับตัวอักษร สังเกตรูปร่าง อ่านความหมาย
-            <br className="desktop-break" /> แล้วลองทดสอบความเข้าใจในจังหวะของคุณเอง
+            เปลี่ยนคันจิที่ดูเหมือนกัน ให้เป็นความเชื่อมโยงที่จำได้
+            <br />
+            มองรูป ดูความต่าง แล้วลองเลือกคำตอบด้วยตัวเอง
           </p>
           <div className="hero-actions">
             <Link className="button primary" to="/lessons">
-              เลือกบทเรียน <ArrowRight size={18} />
+              เริ่มเรียน
+              <ArrowRight size={19} />
             </Link>
-            <Link className="text-link" to="/explore">
-              สำรวจคันจิ <ArrowUpRight size={18} />
+            <Link className="button secondary" to="/compare">
+              สำรวจคู่เปรียบเทียบ
+              <ArrowUpRight size={19} />
             </Link>
           </div>
           <p className="hero-note">
-            <BookOpen size={16} /> เนื้อหาที่เผยแพร่แล้ว เรียนได้โดยไม่ต้องเข้าสู่ระบบ
+            <CircleCheck size={16} /> ไม่ต้องมีแป้นญี่ปุ่น · ฝึกได้โดยไม่ต้องเข้าสู่ระบบ
           </p>
-        </div>
-        <div className="study-preview">
-          <div className="preview-top">
-            <span lang="ja">一歩ずつ</span>
-            <span>LEARNING, AT YOUR PACE</span>
+        </Reveal>
+        <Reveal className="hero-art">
+          <div className="art-caption">
+            <span>THE ART OF NOTICING</span>
+            <span className="stamp" lang="ja">
+              学
+            </span>
           </div>
-          <div className="character-grid" aria-hidden={!card} lang="ja">
-            {card?.character || "学"}
-          </div>
-          {card ? (
+          {card && group ? (
             <>
-              <p className="preview-reading" lang="ja">
-                {card.kunyomi.join(" · ") || card.onyomi.join(" · ")}
-              </p>
-              <h2>{card.meaning_th}</h2>
-              <div className="demo-tabs" aria-label="เลือกคันจิ">
-                {publicCards?.map((item, index) => (
+              <div
+                className="hero-kanji-pickers"
+                role="group"
+                aria-label="ลองสังเกตตัวคันจิ"
+              >
+                {group.characters.map((c, i) => (
                   <button
-                    key={item.character}
-                    lang="ja"
-                    aria-pressed={active === index}
-                    onClick={() => setActive(index)}
+                    key={c.character}
+                    aria-pressed={active === i}
+                    onClick={() => setActive(i)}
+                    className={
+                      active === i ? "motif-card active" : "motif-card"
+                    }
                   >
-                    {item.character}
+                    <span lang="ja">{c.character}</span>
                   </button>
                 ))}
               </div>
-              <Link
-                className="text-link"
-                to={`/explore/${encodeURIComponent(card.character)}`}
-              >
-                เปิดบัตรคันจิ <ArrowUpRight size={16} />
+              <AnimatePresence mode="wait" initial={false}>
+                <m.div
+                  key={card.character}
+                  className="motif-note"
+                  initial={{ opacity: 0, y: reduce ? 0 : 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduce ? 0 : 0.18 }}
+                >
+                  <Reading
+                    text={card.reading.form}
+                    reading={card.reading.reading}
+                  />
+                  <strong>{card.meaning_th}</strong>
+                  <p>{card.memory_note}</p>
+                </m.div>
+              </AnimatePresence>
+              <Link className="text-link" to={`/compare?group=${group.id}`}>
+                ลองดูความต่างให้ชัดขึ้น
+                <ArrowUpRight size={17} />
               </Link>
             </>
+          ) : groups.isPending || groups.error ? (
+            <DataState
+              loading={groups.isPending}
+              error={groups.error}
+              retry={() => void groups.refetch()}
+            />
           ) : (
-            <div className="preview-empty">
-              <p>พื้นที่เล็ก ๆ สำหรับความเข้าใจใหม่</p>
-              <small>ตัวอักษรตกแต่ง · บัตรเรียนจะแสดงเมื่อมีเนื้อหาเผยแพร่</small>
+            <div className="hero-empty">
+              <span lang="ja">つながる</span>
+              <p>ทุกความเข้าใจ เริ่มจากการสังเกต</p>
+              <small>ชุดเรียนรู้จะแสดงเมื่อมีบทเรียนที่เข้าถึงได้</small>
             </div>
           )}
-          <DataState
-            loading={cards.isPending}
-            error={cards.error}
-            retry={() => void cards.refetch()}
-          />
-          <div className="preview-footer">
-            <span>OBSERVE · CONNECT · REMEMBER</span>
-            <span className="seal" aria-hidden="true">
-              木
-            </span>
-          </div>
-        </div>
+          <span className="art-orbit" aria-hidden="true" />
+        </Reveal>
       </section>
-      <section className="method-band">
-        <div className="page method-inner">
-          <div className="method-intro">
-            <p className="eyebrow">THE METHOD</p>
-            <h2>
-              ไม่ต้องรีบจำ
-              <br />
-              เริ่มจากการสังเกต
-            </h2>
+      <section className="page method-section">
+        <div className="section-title">
+          <div>
+            <p className="eyebrow">FOUR SMALL STEPS</p>
+            <h2>จำได้ เพราะเข้าใจความสัมพันธ์</h2>
           </div>
+          <p>เรียนในจังหวะของคุณเอง</p>
+        </div>
+        <div className="method-grid">
           {[
-            { icon: Eye, title: "สังเกต", body: "ให้เวลากับรูปร่างของตัวอักษร" },
             {
-              icon: Layers,
-              title: "เชื่อมโยง",
-              body: "อ่านส่วนประกอบและคำอธิบายในบท",
+              icon: Eye,
+              title: "เรียนรูป",
+              text: "เริ่มจากตัวอักษร คำอ่าน และความหมาย",
             },
             {
               icon: GitCompareArrows,
-              title: "เปรียบเทียบ",
-              body: "วางตัวอักษรที่เรียนไว้ข้างกัน",
+              title: "ดูความต่าง",
+              text: "วางตัวคล้ายกัน แล้วมองจุดสังเกต",
             },
-            { icon: Brain, title: "ลองทบทวน", body: "ใช้แบบฝึกหัดตรวจความเข้าใจ" },
-          ].map(({ icon: Icon, title, body }, i) => (
-            <div className="method" key={title}>
-              <span className="method-index">0{i + 1}</span>
-              <Icon size={23} />
+            {
+              icon: Brain,
+              title: "ฝึกจำ",
+              text: "เชื่อมรูปกับภาพและคำศัพท์ที่มีความหมาย",
+            },
+            {
+              icon: CircleCheck,
+              title: "ทดสอบ",
+              text: "เลือกคำตอบ ดูเหตุผล แล้วลองทบทวน",
+            },
+          ].map(({ icon: Icon, title, text }, i) => (
+            <article className={`method-tile tone-${i}`} key={title}>
+              <span className="step-number">0{i + 1}</span>
+              <Icon size={26} />
               <h3>{title}</h3>
-              <p>{body}</p>
-            </div>
+              <p>{text}</p>
+            </article>
           ))}
         </div>
       </section>
       <section className="page section">
-        <SectionTitle
-          eyebrow="YOUR NEXT CHAPTER"
-          title="เปิดบทเรียน แล้วค่อย ๆ เรียนรู้"
-          to="/lessons"
-        />
+        <div className="section-title">
+          <div>
+            <p className="eyebrow">YOUR NEXT CONNECTION</p>
+            <h2>เริ่มต้นจากบทเล็ก ๆ</h2>
+          </div>
+          <Link className="text-link" to="/lessons">
+            ดูบทเรียนทั้งหมด
+            <ArrowUpRight size={18} />
+          </Link>
+        </div>
         <DataState
           loading={lessons.isPending}
           error={lessons.error}
@@ -156,82 +184,54 @@ export default function Home() {
         />
         {lessons.data?.length === 0 && (
           <EmptyState title="บทเรียนสาธารณะกำลังเตรียมพร้อม">
-            <p>
-              เราจะเปิดบทเรียนเมื่อผ่านการตรวจสอบและอนุมัติเผยแพร่แล้ว
-              <br />
-              ไม่จำเป็นต้องสมัครบัญชีเพื่อรอเปิดอ่าน
-            </p>
-            <Link className="text-link" to="/explore">
-              ไปยังคลังคันจิ <ArrowRight size={16} />
+            <p>เมื่อบทเรียนได้รับอนุมัติแล้ว คุณจะเริ่มเรียนได้ที่นี่โดยไม่ต้องสมัครบัญชี</p>
+            <Link to="/explore" className="button secondary">
+              สำรวจเนื้อหาที่พร้อมเรียน
             </Link>
           </EmptyState>
         )}
         <div className="lesson-grid">
-          {lessons.data
-            ?.filter(
-              (l) =>
-                l.is_available &&
-                ["published", "sample"].includes(l.status) &&
-                !l.private_development,
-            )
-            .map((l) => (
-              <Link
-                className="lesson-card available"
-                key={l.id}
-                to={`/lessons/${l.slug}`}
-              >
-                <div className="lesson-card-top">
-                  <span>บทที่ {String(l.chapter ?? l.id).padStart(2, "0")}</span>
-                  <span className="pill">
-                    {l.status === "sample" ? "ตัวอย่าง" : "พร้อมเรียน"}
-                  </span>
-                </div>
-                <div className="lesson-glyphs" lang="ja">
-                  {l.anchors.slice(0, 4).join(" ")}
-                </div>
-                <h3>{l.title_th}</h3>
-                <p>{l.summary_th}</p>
-                <div className="lesson-card-bottom">
-                  <span>{l.available_count} ตัวอักษร</span>
-                  <ArrowUpRight size={20} />
-                </div>
-              </Link>
-            ))}
+          {lessons.data?.slice(0, 3).map((l, i) => (
+            <Link
+              className="lesson-card"
+              to={`/lessons/${l.slug}`}
+              key={l.slug}
+            >
+              <div className="card-topline">
+                <span>LESSON {String(l.chapter).padStart(2, "0")}</span>
+                <ArrowUpRight size={20} />
+              </div>
+              <div className={`chapter-glyphs tone-${i}`} lang="ja">
+                {l.anchors.slice(0, 3).join(" ")}
+              </div>
+              <h3>{l.title_th}</h3>
+              <p>{l.summary_th}</p>
+              <div className="card-bottom">
+                <span>{l.available_count} ตัวอักษร</span>
+                <strong>เริ่มเรียน →</strong>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
-      <section className="page discovery-grid">
-        <Link className="discovery-card" to="/explore">
-          <p className="eyebrow">THE CHARACTER LIBRARY</p>
-          <h2>เจอตัวอักษรที่อยากรู้จัก?</h2>
-          <p>
-            ค้นหาคันจิ คำอ่าน และความหมาย
-            <br />
-            เปิดดูรายละเอียดได้ทีละตัว
-          </p>
-          <span className="text-link">
-            ไปสำรวจคันจิ <ArrowUpRight size={18} />
+      <section className="page">
+        <aside className="home-cta">
+          <div>
+            <p className="eyebrow">NOTICE SOMETHING NEW TODAY</p>
+            <h2>
+              ไม่ต้องจำทุกอย่างในวันเดียว
+              <br />
+              แค่เห็นความต่างเพิ่มอีกนิด
+            </h2>
+          </div>
+          <Link className="button dark" to="/compare">
+            ลองเปรียบเทียบ
+            <ArrowUpRight size={20} />
+          </Link>
+          <span className="cta-symbol" aria-hidden="true" lang="ja">
+            見
           </span>
-        </Link>
-        <Link className="discovery-card practice-discovery" to="/quiz">
-          <p className="eyebrow">A MOMENT TO PRACTICE</p>
-          <h2>ลองตอบ ก่อนเปิดเฉลย</h2>
-          <p>
-            ทำแบบฝึกหัดที่พร้อมเผยแพร่
-            <br />
-            ดูผลรอบนี้ได้โดยไม่ต้องมีบัญชี
-          </p>
-          <span className="text-link">
-            เลือกแบบฝึกหัด <ArrowUpRight size={18} />
-          </span>
-        </Link>
-      </section>
-      <section className="page closing">
-        <p className="eyebrow">MAKE ROOM FOR LEARNING</p>
-        <h2>เริ่มเล็ก ๆ ก็เป็นการเริ่มต้นที่ดี</h2>
-        <p>เรียนได้โดยไม่สมัครบัญชี เข้าสู่ระบบเมื่อต้องการใช้พื้นที่ส่วนตัว</p>
-        <Link className="button" to="/account">
-          รู้จักพื้นที่การเรียนรู้ของคุณ <ArrowRight size={17} />
-        </Link>
+        </aside>
       </section>
     </>
   );

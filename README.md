@@ -1,17 +1,19 @@
 # Kanji Connection
 
 A Thai-language Kanji learning application built around visual comparison,
-contextual readings, quizzes and spaced review. The public source supports a
-sample experience; the book dataset and PDF are not
-distributed with this repository.
+contextual readings, quizzes and spaced review. The book dataset and PDF are not
+distributed with this repository; the reviewed working edition is served from
+the configured Supabase database.
 
 ## Project status
 
 Authentication, persistent learning progress, quizzes, flashcards, explicit
-guest-data synchronization and the dashboard are implemented. A 30-chapter
-dataset was structurally validated and imported into private staging; **no
-chapter has full editorial approval**. Deployment configuration is prepared, but
-no hosted release or content publication is claimed. See the
+guest-data synchronization and the dashboard are implemented. The
+`2026-11-19-final-v2` working edition was published in Supabase: all 30 chapters,
+94 comparison groups and 450 multiple-choice questions are publicly readable
+without an account. This publication is a release decision, not a claim of full
+editorial approval; the four open educational review items remain separate.
+Hosted account writes and development content access stay disabled. See the
 [implementation status](docs/reports/IMPLEMENTATION_STATUS.md) for dated
 evidence and limits.
 
@@ -31,10 +33,11 @@ evidence and limits.
   Thai/Japanese text.
 - Source-provided group furigana, contextual reading notes and PDF provenance
   where available.
-- Published public lessons, Kanji details and practice need no account. When no
-  content is approved, public pages explain the publication empty state.
+- Published public lessons, Kanji details and practice need no account. Empty
+  states remain for filters or future unpublished content.
 - Server-graded public quizzes keep results in component state for the current
-  visit only. Comparison explanations remain pending manual review.
+  visit only. Answer keys are returned only after a submitted choice; the four
+  open editorial rubric items remain outside the graded quiz.
 - Personal dashboards, review queues and progress require authentication;
   persistence also requires the existing server write permission.
 - Legacy browser/cloud sync previews preserve explicit conflict choices, without

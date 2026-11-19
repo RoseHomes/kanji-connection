@@ -1,4 +1,4 @@
-﻿import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -7,131 +7,108 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { QuizRound } from "./Quiz";
+import { MotionConfig } from "motion/react";
+import { PracticeRound } from "./Quiz";
+import type { PracticeQuestion } from "../presentation-types";
 const mocks = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock("../api", () => ({ api: mocks.api }));
+const questions: PracticeQuestion[] = [
+  {
+    id: "q1",
+    kind: "meaning",
+    prompt: "木 หมายถึงอะไร?",
+    options: [
+      { id: "a", text: "ต้นไม้" },
+      { id: "b", text: "ป่า" },
+      { id: "c", text: "น้ำ" },
+    ],
+  },
+  {
+    id: "q2",
+    kind: "shape",
+    prompt: "จุดต่างของ 木 และ 林 คืออะไร?",
+    options: [
+      { id: "d", text: "ต้นไม้หนึ่งต้นและสองต้น" },
+      { id: "e", text: "เหมือนกัน" },
+      { id: "f", text: "มีแต่คำอ่านต่าง" },
+    ],
+  },
+];
+const response = (correct: boolean, second = false) => ({
+  correct,
+  correct_option_id: second ? "d" : "a",
+  correct_text: second ? "ต้นไม้หนึ่งต้นและสองต้น" : "ต้นไม้",
+  explanation: second ? "林 มี 木 สองตัว" : "木 เป็นรูปต้นไม้",
+  selection_explanation: "สังเกตรูปและความหมาย",
+  persisted: false,
+});
+const mount = (qs = questions) =>
+  render(
+    <MotionConfig reducedMotion="always">
+      <MemoryRouter>
+        <PracticeRound questions={qs} slug="chapter-02" />
+      </MemoryRouter>
+    </MotionConfig>,
+  );
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
   localStorage.clear();
 });
-it("lets a read-only account practice through the non-persisting endpoint", async () => {
-  mocks.api.mockResolvedValue({
-    correct: true,
-    status: "graded",
-    expected: "き",
-    explanation: "",
-    persisted: false,
-  });
-  render(
-    <MemoryRouter>
-      <QuizRound
-        questions={[
-          {
-            key: "chapter-02:q-01",
-            prompt: "木",
-            question_type: "reading",
-            options: [],
-            manual: false,
-          },
-        ]}
-        persist={true}
-        readOnly={true}
-        onSaved={() => {}}
-      />
-    </MemoryRouter>,
-  );
-  fireEvent.change(screen.getByRole("textbox"), { target: { value: "き" } });
-  expect(screen.getByRole("button", { name: "ตรวจคำตอบ" })).not.toBeDisabled();
-  fireEvent.submit(screen.getByRole("textbox").closest("form")!);
-  await screen.findByText("ถูกต้อง ✓");
-  expect(mocks.api.mock.calls[0][0]).toContain("/learning/check/");
+it("requires a radio selection, submits only an option ID and shows explicit feedback", async () => {
+  mocks.api.mockResolvedValue(response(true));
+  mount();
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /ตรวจคำตอบ/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+  expect(mocks.api).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  await screen.findByText("ถูกต้อง เชื่อมโยงได้แล้ว!");
+  expect(mocks.api.mock.calls[0]).toEqual([
+    "/learning/practice/chapter-02/q1/check",
+    { method: "POST", body: JSON.stringify({ option_id: "a" }) },
+  ]);
+  expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
   expect(localStorage.length).toBe(0);
 });
-it("submits answers once, shows feedback, and keeps comparison responses ungraded", async () => {
-  mocks.api.mockResolvedValueOnce({
-    correct: true,
-    status: "graded",
-    expected: "き",
-    explanation: "",
-  });
-  render(
-    <MemoryRouter>
-      <QuizRound
-        questions={[
-          {
-            key: "chapter-02:q-01",
-            prompt: "木",
-            question_type: "reading",
-            options: [],
-            manual: false,
-          },
-          {
-            key: "chapter-02:comparison-c",
-            prompt: "Compare",
-            question_type: "comparison",
-            options: [],
-            manual: true,
-          },
-        ]}
-        persist={false}
-        onSaved={() => {}}
-      />
-    </MemoryRouter>,
-  );
-  expect(screen.queryByText("คำตอบอ้างอิง:")).not.toBeInTheDocument();
-  fireEvent.change(screen.getByRole("textbox"), { target: { value: "き" } });
-  fireEvent.click(screen.getByRole("button", { name: "ตรวจคำตอบ" }));
-  await screen.findByText("ถูกต้อง ✓");
-  expect(localStorage.length).toBe(0);
-  const request = JSON.parse(mocks.api.mock.calls[0][1].body);
-  expect(request.answer).toBe("き");
-  expect(request.submission_id).toBeTruthy();
-  expect(request.score).toBeUndefined();
-  fireEvent.click(screen.getByRole("button", { name: "ข้อถัดไป →" }));
-  mocks.api.mockResolvedValueOnce({
-    correct: null,
-    status: "needs_manual_review",
-    expected: null,
-    explanation: "source note",
-  });
-  fireEvent.change(screen.getByRole("textbox"), {
-    target: { value: "source explanation" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "ส่งคำอธิบาย" }));
-  await screen.findByText("ข้อนี้ไม่มีคะแนนอัตโนมัติ");
-  fireEvent.click(screen.getByRole("button", { name: "ข้อถัดไป →" }));
-  await screen.findByText(/ตอบถูก 1 จาก 1 ข้อที่ตรวจอัตโนมัติ/);
+it("completes a full round, reviews explanations, and retries only incorrect items", async () => {
+  mocks.api
+    .mockResolvedValueOnce(response(false))
+    .mockResolvedValueOnce(response(true, true))
+    .mockResolvedValue(response(true));
+  mount();
+  fireEvent.click(screen.getByRole("radio", { name: /ป่า/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  await screen.findByText(/อีกนิดเดียว/);
+  fireEvent.click(screen.getByRole("button", { name: /ข้อต่อไป/ }));
+  await screen.findByText(questions[1].prompt);
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้หนึ่งต้น/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  await screen.findByText("ถูกต้อง เชื่อมโยงได้แล้ว!");
+  fireEvent.click(screen.getByRole("button", { name: /ดูผลการฝึก/ }));
+  await screen.findByText("เก่งขึ้นอีกหนึ่งความเชื่อมโยง");
+  expect(screen.getByText(/ตอบถูก 1 ข้อ/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /ดูคำตอบทั้งรอบ/ }));
+  expect(screen.getByText("林 มี 木 สองตัว")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /ลองข้อที่ยังสับสน/ }));
+  expect(screen.getByText("ข้อ 1 จาก 1")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  await screen.findByText("ถูกต้อง เชื่อมโยงได้แล้ว!");
 });
-it("reuses the same submission identifier on a failed save retry", async () => {
-  mocks.api.mockRejectedValueOnce(new Error("Retry")).mockResolvedValueOnce({
-    correct: false,
-    status: "graded",
-    expected: "き",
-    explanation: "",
-  });
-  render(
-    <MemoryRouter>
-      <QuizRound
-        questions={[
-          {
-            key: "chapter-02:q-01",
-            prompt: "木",
-            question_type: "reading",
-            options: [],
-            manual: false,
-          },
-        ]}
-        persist={true}
-        onSaved={() => {}}
-      />
-    </MemoryRouter>,
-  );
-  fireEvent.change(screen.getByRole("textbox"), { target: { value: "wrong" } });
-  fireEvent.click(screen.getByRole("button", { name: "ตรวจคำตอบ" }));
+it("retries network failures with the same choice and prevents duplicate checks", async () => {
+  mocks.api
+    .mockRejectedValueOnce(new Error("Try again"))
+    .mockResolvedValue(response(true));
+  mount(questions.slice(0, 1));
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
   await screen.findByRole("alert");
-  fireEvent.click(screen.getByRole("button", { name: "ตรวจคำตอบ" }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
   await waitFor(() => expect(mocks.api).toHaveBeenCalledTimes(2));
-  expect(mocks.api.mock.calls[0][1].body).toBe(mocks.api.mock.calls[1][1].body);
-  expect(mocks.api.mock.calls[1][0]).toContain("/me/attempts/");
+  expect(mocks.api.mock.calls[0]).toEqual(mocks.api.mock.calls[1]);
+});
+it("shows an honest empty state", () => {
+  mount([]);
+  expect(screen.getByText("บทนี้ยังไม่มีชุดคำถามที่พร้อมเรียน")).toBeInTheDocument();
 });

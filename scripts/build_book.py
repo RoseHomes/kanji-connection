@@ -15,6 +15,14 @@ from app.thai_references import verify_thai
 
 
 def main():
+    # Once an edition-bound working revision exists, normal builds must not
+    # silently regenerate the superseded educational version. The original
+    # extraction and its earlier audit outputs remain historical evidence.
+    if (ROOT / "private/editorial-revisions/2026-11-19-final-v2.json").exists():
+        from build_editorial_working import main as build_working_edition
+
+        build_working_edition()
+        return
     book = load_dataset(ROOT / SOURCE_RELATIVE)
     folder = ROOT / "private/dictionaries"
     references = (

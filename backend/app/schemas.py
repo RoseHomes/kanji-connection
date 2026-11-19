@@ -17,7 +17,7 @@ class Kanji(BaseModel):
 
 
 class Lesson(BaseModel):
-    id: int
+    id: int = Field(default=0, exclude=True)
     chapter: int | None = None
     slug: str
     part: int
@@ -33,12 +33,12 @@ class Lesson(BaseModel):
 class LessonDetail(Lesson):
     kanjis: list[Kanji]
     introduction_th: str
-    provenance: str
+    provenance: str = Field(default="", exclude=True)
     sections: list[dict] = Field(default_factory=list)
 
 
 class VocabularyResponse(BaseModel):
-    id: int
+    id: int = Field(default=0, exclude=True)
     written_form: str
     reading: str
     meaning_th: str

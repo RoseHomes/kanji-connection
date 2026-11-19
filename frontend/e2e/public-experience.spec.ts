@@ -25,9 +25,9 @@ test("production-style empty content never sends visitors to login or personal A
   for (const [path, title] of [
     ["/", "บทเรียนสาธารณะกำลังเตรียมพร้อม"],
     ["/lessons", "บทเรียนสาธารณะกำลังเตรียมพร้อม"],
-    ["/explore", "คลังคันจิสาธารณะกำลังเตรียมพร้อม"],
-    ["/quiz", "แบบฝึกหัดสาธารณะกำลังเตรียมพร้อม"],
-    ["/compare", "ยังไม่มีคันจิที่เผยแพร่ให้เปรียบเทียบ"],
+    ["/explore", "ยังไม่พบตัวอักษรในชุดนี้"],
+    ["/quiz", "แบบฝึกหัดกำลังเตรียมพร้อม"],
+    ["/compare", "ชุดเปรียบเทียบกำลังเตรียมพร้อม"],
   ]) {
     await page.goto(path);
     await expect(
@@ -47,34 +47,23 @@ test("production-style empty content never sends visitors to login or personal A
   expect(personal).toEqual([]);
 });
 
-test("mobile navigation works with keyboard and Escape", async ({ page }) => {
+test("mobile bottom navigation works with keyboard and reduced motion", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  const toggle = page.getByRole("button", { name: "เปิดเมนู" });
-  expect(
-    await toggle.evaluate(
-      (element) => getComputedStyle(element).transitionDuration,
-    ),
-  ).toBe("0s");
-  await toggle.focus();
+  const quiz = page
+    .getByRole("navigation", { name: "เมนูมือถือ" })
+    .getByRole("link", { name: "แบบฝึกหัด", exact: true });
+  await quiz.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "ปิดเมนู" })).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "เปิดเมนู" })).toBeFocused();
-  await page.getByRole("button", { name: "เปิดเมนู" }).click();
-  await page
-    .getByRole("navigation", { name: "เมนูหลัก" })
-    .getByRole("link", { name: "แบบฝึกหัด", exact: true })
-    .click();
   await expect(page).toHaveURL(/\/quiz$/);
-  await expect(page.getByRole("button", { name: "เปิดเมนู" })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
+  await expect(
+    page
+      .getByRole("navigation", { name: "เมนูมือถือ" })
+      .getByRole("link", { name: "แบบฝึกหัด", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 });
 
 for (const width of [360, 768, 1440]) {
@@ -110,7 +99,7 @@ for (const width of [360, 768, 1440]) {
         ["/lessons/chapter-02", "/quiz/chapter-02", "/account"].includes(path)
       )
         await page.screenshot({
-          path: `../artifacts/redesign-${width}-${path.split("/")[1]}.png`,
+          path: `../private/ui-ux-redesign/screenshots/public-${width}-${path.split("/")[1]}.png`,
           fullPage: true,
         });
     }
