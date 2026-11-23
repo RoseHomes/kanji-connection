@@ -49,7 +49,7 @@ Vite development proxy is for local use and is not a production proxy.
 
 Review the credential-free templates:
 
-- `frontend/.env.production.example`: exactly three public VITE variables.
+- `frontend/.env.production.example`: three required public VITE variables and an optional Turnstile site key.
 - `backend/.env.production.example`: runtime-only secret/configuration values.
 
 Enter real values in the correct Vercel project's Environment Variables UI,
@@ -66,9 +66,12 @@ Frontend:
 | VITE_API_URL                  | Actual stable backend HTTPS origin          |
 | VITE_SUPABASE_URL             | Existing Supabase Auth project HTTPS origin |
 | VITE_SUPABASE_PUBLISHABLE_KEY | Existing PUBLIC publishable/anon key        |
+| VITE_TURNSTILE_SITE_KEY       | Optional public Turnstile widget site key   |
 
-Only these three VITE names may enter browser configuration. Vite's `envPrefix`
-and configuration loading use the same three application prefixes. Vercel's
+Only these VITE names may enter browser configuration. Vite's `envPrefix`
+and configuration loading use the same application prefixes. See the
+[Turnstile rollout steps](AUTH_AND_PROGRESS.md#roll-out-turnstile-and-password-protection)
+before enabling CAPTCHA in Supabase. Vercel's
 automatically prefixed framework metadata and unrelated VITE variables are
 excluded from both loading and browser exposure, rather than accepted as
 application configuration. Unexpected suffix variants of the application names
@@ -246,7 +249,7 @@ approved action.
    Vercel assigns a different final hostname. Leave migration/build hooks unset.
    Deploy backend only under the approved deployment scope; record its stable
    HTTPS origin.
-4. Configure the FRONTEND project/root, three public variables and Node 22.x.
+4. Configure the FRONTEND project/root, required public variables and Node 22.x.
    Use the backend origin from step 3. Deploy only under the approved deployment
    scope. Record the actual canonical frontend origin.
 5. Reconcile CORS with that exact actual frontend origin and redeploy the

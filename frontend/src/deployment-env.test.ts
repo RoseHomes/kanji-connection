@@ -9,6 +9,7 @@ const valid = {
   VITE_API_URL: "https://api.example.test",
   VITE_SUPABASE_URL: "https://auth.example.test",
   VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_ci_fixture",
+  VITE_TURNSTILE_SITE_KEY: "public-turnstile-site-key",
 };
 const excluded = [
   "VITE_VERCEL_ENV",
@@ -17,6 +18,7 @@ const excluded = [
   "VITE_USER_NODE_ENV",
   "VITE_DATABASE_URL",
   "VITE_VERCEL_SECRET",
+  "VITE_TURNSTILE_SECRET_KEY",
 ];
 beforeEach(() => {
   for (const [name, value] of Object.entries(valid)) vi.stubEnv(name, value);

@@ -31,9 +31,10 @@ Templates: [frontend development](../../frontend/.env.example),
 | VITE_API_URL                  | Frontend public                | Exact HTTPS backend origin in production; blank local dev proxy |
 | VITE_SUPABASE_URL             | Frontend public                | Existing Auth project HTTPS origin                              |
 | VITE_SUPABASE_PUBLISHABLE_KEY | Frontend public                | Publishable/anon key, never secret/service-role                 |
+| VITE_TURNSTILE_SITE_KEY       | Frontend, optional public value | Turnstile site key for login, signup, and reset requests         |
 | TEST_DATABASE_URL             | Disposable test process only   | Guarded loopback database; never a hosted URL                   |
 
-Production permits only the three named VITE variables. Database credentials,
+Production permits only the named VITE variables. Database credentials,
 signing secrets, service-role keys and development identities never belong in
 the browser bundle. Changing public values requires rebuilding the frontend.
 Hosted setup also rejects placeholders, sample exposure, development bypasses

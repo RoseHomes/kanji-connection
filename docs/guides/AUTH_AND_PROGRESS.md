@@ -57,6 +57,43 @@ Sources:
 [signup](https://supabase.com/docs/reference/javascript/auth-signup),
 [session handling](https://supabase.com/docs/reference/javascript/auth-getsession).
 
+## Roll out Turnstile and password protection
+
+1. In **Cloudflare → Turnstile**, add a **Managed** widget for
+   `kanji-connection-frontend.vercel.app`. Add other frontend hostnames only
+   if they will serve the account page. Leave pre-clearance off.
+2. Set `VITE_TURNSTILE_SITE_KEY` in the Vercel frontend project to the widget's
+   public site key. Build and deploy the frontend and verify the challenge
+   renders on login, signup, and the password-reset request form.
+3. In **Supabase → Authentication → URL Configuration**, set the Site URL to
+   `https://kanji-connection-frontend.vercel.app` and allow
+   `https://kanji-connection-frontend.vercel.app/account` as a redirect. Keep
+   **Confirm email** on for the Email provider. Open PKCE reset links in the
+   same browser used to request them.
+4. In the Supabase Email provider password settings, set **Minimum password
+   length** to **12** and enable **Prevent use of leaked passwords** on Pro or
+   above. Enable **Require current password when changing password** to enforce
+   the signed-in form's current-password check at the server. Recovery sessions
+   use the email link instead.
+5. After the frontend is live, open **Supabase → Authentication → Attack
+   Protection** (also labeled **Bot and Abuse Protection**), enable CAPTCHA,
+   select **Cloudflare Turnstile**, and save the matching widget **secret key**
+   there. Keep the secret out of Vercel's browser variables. Test sign-in,
+   signup, and a complete password reset using a test account.
+
+Supabase enforces its configured length and leaked-password checks on password
+creation and updates. The app also rejects email matches and obvious patterns
+in signup, signed-in change, and recovery. Supabase's documented hosted settings
+and Auth Hooks do not expose a new plaintext password for a custom check, so
+direct Auth API requests can bypass the app-specific rules. The interface hides
+account-specific errors, but provider response details and email rate limits
+are outside the app's control.
+
+[Cloudflare widget setup](https://developers.cloudflare.com/turnstile/get-started/) ·
+[Supabase CAPTCHA](https://supabase.com/docs/guides/auth/auth-captcha) ·
+[Supabase password security](https://supabase.com/docs/guides/auth/password-security) ·
+[Supabase Auth Hooks](https://supabase.com/docs/guides/auth/auth-hooks)
+
 ## Persistent local development without Supabase database writes
 
 A local runner creates/updates **only** ignored SQLite files under

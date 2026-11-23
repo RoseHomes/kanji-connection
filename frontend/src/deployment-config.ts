@@ -5,6 +5,7 @@ export const PUBLIC_BROWSER_ENV_PREFIXES = [
   "VITE_API_URL",
   "VITE_SUPABASE_URL",
   "VITE_SUPABASE_PUBLISHABLE_KEY",
+  "VITE_TURNSTILE_SITE_KEY",
 ];
 
 function exactHttpsOrigin(value: string | undefined) {
@@ -37,7 +38,7 @@ export function requireProductionConfig(
     )
   ) {
     throw new Error(
-      "Production browser configuration allows only API origin and public Supabase configuration; remove other VITE_ variables.",
+      "Production browser configuration allows only the API origin, public Supabase configuration, and a Turnstile site key; remove other VITE_ variables.",
     );
   }
   if (!exactHttpsOrigin(env.VITE_API_URL)) {
