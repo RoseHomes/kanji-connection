@@ -132,14 +132,13 @@ preserved in the database but excluded from teaching flashcards. No
 authentication bypass or fake-login switch is included in the development
 server.
 
-## PostgreSQL activation remains a separate approval step
+## Enable production account persistence
 
 `ENABLE_USER_WRITES=false` is the safe default in backend/.env.example.
-Protected GETs and the guest-sync preview are read-only; account mutation
-requests fail closed until writes are enabled. Do not enable this against the
-live project until the owner explicitly authorizes ongoing account writes. The
-private book import has already been verified; do not repeat it as part of
-account setup. `DEVELOPMENT_USER_IDS=[]` defaults to no private access. Hosted
+Protected GETs and the guest-sync preview are read-only. Set
+`ENABLE_USER_WRITES=true` in the Vercel backend's Production environment and
+redeploy. Hosted writes require the platform's `VERCEL_ENV=production`.
+`DEVELOPMENT_USER_IDS=[]` defaults to no private access. Hosted
 Preview and Production always require it empty; private allowlisting is local
 development only. The local runner enables writes only on its explicit SQLite
 engine. No new migration is necessary.
@@ -149,9 +148,9 @@ RLS, apply owner filters to every query, use per-owner transaction advisory
 locks, and commit only successful mutations. The function-scoped transaction
 finishes before a success response is sent; a commit failure returns an error
 and rolls back. A privileged backend DB connection still relies on those
-application owner filters; no privileged database credential is exposed to the
-browser. The user-table RLS policies and auth.users foreign keys from revision
-0002 remain unchanged.
+application owner filters. On the existing Supabase project the runtime role
+bypasses RLS. RLS, revoked browser-role table grants, and owner foreign keys
+protect the direct database boundary. The browser uses the authenticated API.
 
 ## Learning behavior and conflict handling
 
@@ -165,6 +164,8 @@ browser. The user-table RLS policies and auth.users foreign keys from revision
 - Quiz submission UUIDs are idempotent per owner. Reusing a UUID for a different
   question or answer returns 409; retries of the same answer return the stored
   outcome.
+- Official multiple-choice answers are graded and saved when signed in with
+  account writes enabled. Guest answers and lesson quick checks are stateless.
 - Comparison answers are pending manual review. The existing non-null correct
   column holds false internally, with grade_status stored in the existing JSON
   column; pending entries are exposed as correct=null and excluded from
@@ -174,8 +175,9 @@ browser. The user-table RLS policies and auth.users foreign keys from revision
   up to 90 days, a lapse resets to one day and repeats the card in the current
   UI round. The server computes dates/counts; expected_version rejects
   stale/retried schedule mutations.
-- Guest mode stores review cards plus lesson completion and up to 200 quiz
-  attempts locally. Signing in does not sync or delete them automatically.
+- Current guest learning creates no account progress or quiz history. Existing
+  legacy browser records can be imported explicitly. Signing in does not sync
+  or delete them automatically.
   Preview lists both guest/cloud values. Existing records require explicit radio
   choices; new records are proposed as imports but still require final
   confirmation. Unavailable content stays local.

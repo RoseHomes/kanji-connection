@@ -42,6 +42,10 @@ class ChoiceInput(Input):
     option_id: str = Field(min_length=1, max_length=80)
 
 
+class ChoiceAttemptInput(ChoiceInput):
+    submission_id: UUID
+
+
 class ProgressInput(Input):
     progress: int = Field(ge=0, le=100)
     expected_version: int = Field(ge=0)

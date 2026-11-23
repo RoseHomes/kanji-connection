@@ -31,13 +31,14 @@ class Settings(BaseSettings):
     enable_user_writes: bool = False
     development_user_ids: list[UUID] = []
     vercel: bool = False
+    vercel_env: str | None = None
 
     def require_hosted_safety(self):
         """Vercel Preview and Production both deny development content access."""
         if not self.vercel:
             return
-        if self.enable_user_writes:
-            raise ValueError("Hosted deployments must keep account writes disabled")
+        if self.enable_user_writes and self.vercel_env != "production":
+            raise ValueError("Hosted account writes are allowed only in production")
         if self.content_source != "database" or self.expose_samples or self.development_user_ids:
             raise ValueError(
                 "Hosted deployments require database mode, no samples and no development allowlist"

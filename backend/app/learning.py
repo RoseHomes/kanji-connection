@@ -151,14 +151,20 @@ class Learning:
 
     def attempt(self, key, submission, answer):
         q = self.question(key)
+        return self.record_attempt(q, submission, answer, self.grade(q, answer))
+
+    def record_attempt(self, question, submission, answer, result, *, presentation=None):
         existing = self.db.scalar(
             select(QuizAttempt).where(
                 QuizAttempt.owner_id == self.user.id, QuizAttempt.submission_id == submission
             )
         )
-        result = self.grade(q, answer)
         if existing:
-            if existing.question_id != q.id or existing.selected_answer.get("answer") != answer:
+            if (
+                existing.question_id != question.id
+                or existing.selected_answer.get("answer") != answer
+                or existing.selected_answer.get("presentation") != presentation
+            ):
                 raise HTTPException(409, "Submission identifier already used")
             # Replay stored outcome even if an editor subsequently changes an answer.
             return existing.selected_answer["result"]
@@ -166,9 +172,10 @@ class Learning:
             QuizAttempt(
                 owner_id=self.user.id,
                 submission_id=submission,
-                question_id=q.id,
+                question_id=question.id,
                 selected_answer={
                     "answer": answer,
+                    **({"presentation": presentation} if presentation else {}),
                     "grade_status": result["status"],
                     "result": result,
                 },
@@ -242,7 +249,9 @@ class Learning:
             .join(LessonRecord)
             .where(UserProgress.owner_id == self.user.id)
         ):
-            if public_lesson(lesson, self.settings.expose_samples) or self.private:
+            if (
+                lesson.catalog_visible and public_lesson(lesson, self.settings.expose_samples)
+            ) or self.private:
                 lesson_rows.append(
                     {
                         "slug": lesson.slug,
@@ -271,7 +280,8 @@ class Learning:
             .order_by(QuizAttempt.created_at.desc())
         ):
             allowed = (
-                public_lesson(lesson, self.settings.expose_samples)
+                lesson.catalog_visible
+                and public_lesson(lesson, self.settings.expose_samples)
                 and (
                     question.status == "published"
                     or (self.settings.expose_samples and question.status == "sample")
@@ -354,6 +364,7 @@ class Learning:
             if existing and (
                 existing.question_id != question.id
                 or existing.selected_answer.get("answer") != a.answer
+                or existing.selected_answer.get("presentation") is not None
             ):
                 raise HTTPException(409, "Guest attempt identifier conflicts with cloud history")
             rows.append(

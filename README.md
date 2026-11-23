@@ -12,7 +12,7 @@ Kanji Connection is a Thai-language study site for Thai-speaking learners of Jap
 - **450 multiple-choice questions.** Check answers as you go, read explanations, and revisit mistakes after each quiz.
 - **Kanji explorer.** Look up individual characters and browse their readings, vocabulary, and related Kanji.
 
-The personal dashboard and review area require sign-in. Account writes are disabled on the hosted site.
+The personal dashboard and review area require sign-in. With production account writes enabled, signed-in learners can save lesson completion, flashcard schedules, and quiz history. Guest quizzes stay in the current page.
 
 Supabase Auth handles email confirmation and password recovery. When configured, Cloudflare Turnstile protects login, registration, and password-reset requests, with Supabase verifying each challenge token. The app gives clear retry guidance for rate limits and uses account-neutral error messages.
 

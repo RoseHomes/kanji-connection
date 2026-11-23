@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from .database import read_session
 from .learning import Learning, grade_sample, public_lesson, sample_questions
 from .learning_schema import (
     AnswerInput,
+    ChoiceAttemptInput,
     ChoiceInput,
     DevelopmentLesson,
     GuestSnapshot,
@@ -56,7 +57,8 @@ def practice_check(
     return check_choice(db, request.app.state.settings, user, slug, question_id, body.option_id)
 
 
-def account_session(request: Request, user: CurrentUser):
+def account_session(request: Request, response: Response, user: CurrentUser):
+    response.headers["Cache-Control"] = "private, no-store"
     settings = request.app.state.settings
     writing = request.method in {
         "POST",
@@ -65,9 +67,7 @@ def account_session(request: Request, user: CurrentUser):
         "PATCH",
     } and not request.url.path.endswith("/sync/preview")
     if writing and not settings.enable_user_writes:
-        raise HTTPException(
-            503, "Account writes are disabled; configure an authorized development database"
-        )
+        raise HTTPException(503, "Account writes are disabled")
     if request.app.state.engine is None:
         raise HTTPException(503, "Account database is not configured")
     with Session(request.app.state.engine, expire_on_commit=False) as session:
@@ -291,6 +291,28 @@ def attempt(
         ),
         "persisted": True,
     }
+
+
+@router.post("/me/practice/{slug}/{question_id}/attempt")
+def choice_attempt(
+    slug: str,
+    question_id: str,
+    body: ChoiceAttemptInput,
+    request: Request,
+    user: CurrentUser,
+    db: AccountSession,
+):
+    from .learning_presentation import check_choice
+
+    return check_choice(
+        db,
+        request.app.state.settings,
+        user,
+        slug,
+        question_id,
+        body.option_id,
+        submission_id=body.submission_id,
+    )
 
 
 @router.put("/me/progress/{slug}")

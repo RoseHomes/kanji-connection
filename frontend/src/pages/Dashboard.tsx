@@ -68,7 +68,8 @@ function PersonalDashboard() {
   const readOnly = !!session && health.data?.account_writes_enabled !== true;
   const cloud = useQuery({
     queryKey: ["dashboard", session?.user.id],
-    queryFn: () => api<DashboardData>("/me/dashboard"),
+    queryFn: () =>
+      api<DashboardData>("/me/dashboard", { ownerId: session?.user.id }),
     enabled: ready && !!session,
   });
   const lessons = useQuery({
@@ -114,6 +115,7 @@ function PersonalDashboard() {
     setMessage("");
     try {
       await api("/me/sync/apply", {
+        ownerId: session?.user.id,
         method: "POST",
         body: JSON.stringify({
           guest: captured,

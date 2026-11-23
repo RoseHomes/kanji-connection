@@ -111,6 +111,14 @@ def test_guard_detects_vercel_environment_without_loading_local_credentials(monk
     assert Settings(_env_file=None, **values).vercel is True
 
 
+def test_hosted_writes_require_production_and_explicit_opt_in():
+    assert hosted(vercel_env="production").enable_user_writes is False
+    assert hosted(vercel_env="production", enable_user_writes=True).enable_user_writes is True
+    for environment in (None, "preview", "development"):
+        with pytest.raises(ValidationError, match="only in production"):
+            hosted(vercel_env=environment, enable_user_writes=True)
+
+
 def test_hosted_development_access_stays_disabled_even_after_unsafe_model_copy():
     owner = uuid4()
     copied = hosted().model_copy(update={"development_user_ids": [owner]})

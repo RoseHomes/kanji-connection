@@ -72,6 +72,7 @@ function PersonalReview() {
         const result = await api<CloudReview>(
           `/me/reviews/${encodeURIComponent(card.character)}`,
           {
+            ownerId: session?.user.id,
             method: "PUT",
             body: JSON.stringify({
               knew,

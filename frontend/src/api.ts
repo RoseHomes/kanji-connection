@@ -13,13 +13,15 @@ const PUBLIC_READ = /^\/(health|lessons|kanjis|compare|search|learning)(\/|$)/;
 
 export async function api<T>(
   path: string,
-  options: RequestInit & { anonymous?: boolean } = {},
+  options: RequestInit & { anonymous?: boolean; ownerId?: string } = {},
 ): Promise<T> {
-  const { anonymous = false, ...request } = options;
+  const { anonymous = false, ownerId, ...request } = options;
   const { data } =
     supabase && !anonymous
       ? await supabase.auth.getSession()
       : { data: { session: null } };
+  if (ownerId && data.session?.user.id !== ownerId)
+    throw new ApiError("กรุณาเข้าสู่ระบบอีกครั้ง", 401);
   const headers = new Headers(options.headers);
   if (data.session)
     headers.set("Authorization", `Bearer ${data.session.access_token}`);

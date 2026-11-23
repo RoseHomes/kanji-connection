@@ -202,7 +202,7 @@ def public_question(question):
     return {k: question[k] for k in ["id", "prompt", "kind", "options"]}
 
 
-def check_choice(db, settings, user, slug, question_id, choice_id):
+def check_choice(db, settings, user, slug, question_id, choice_id, *, submission_id=None):
     question = next((q for q in practice(db, settings, user, slug) if q["id"] == question_id), None)
     if question is None:
         raise HTTPException(404, "Question unavailable")
@@ -210,7 +210,7 @@ def check_choice(db, settings, user, slug, question_id, choice_id):
     if selected is None:
         raise HTTPException(422, "Choose one of the provided options")
     correct = next(o for o in question["options"] if o["id"] == question["correct_option_id"])
-    return {
+    result = {
         "correct": choice_id == correct["id"],
         "correct_option_id": correct["id"],
         "correct_text": correct["text"],
@@ -220,6 +220,17 @@ def check_choice(db, settings, user, slug, question_id, choice_id):
         else "เลือกได้ตรงกับสิ่งที่เรียนแล้ว",
         "persisted": False,
     }
+    if submission_id is not None:
+        service = Learning(db, settings, user)
+        source = service.question(f"{slug}:{question['source_question_key']}")
+        return service.record_attempt(
+            source,
+            submission_id,
+            choice_id,
+            {**result, "persisted": True, "status": "graded"},
+            presentation=question_id,
+        )
+    return result
 
 
 def comparison_groups(db, settings, user):

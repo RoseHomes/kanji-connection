@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { m, AnimatePresence, useReducedMotion } from "motion/react";
 import {
@@ -11,7 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { api } from "../api";
-import type { Lesson } from "../types";
+import type { Health, Lesson } from "../types";
+import { useAuth } from "../auth";
 import type { PracticeQuestion, ChoiceResult } from "../presentation-types";
 import { DataState, EmptyState } from "../components";
 import { PageHeading } from "../ui";
@@ -93,6 +94,22 @@ export function PracticeRound({
   slug: string;
   variant?: "quiz" | "checkpoint";
 }) {
+  const { session, configured, ready } = useAuth();
+  const cache = useQueryClient();
+  const ownerId = session?.user.id;
+  const accountQuiz = variant === "quiz" && !!ownerId;
+  const health = useQuery({
+    queryKey: ["health"],
+    queryFn: () => api<Health>("/health", { anonymous: true }),
+    enabled: accountQuiz,
+  });
+  const checkingSession = variant === "quiz" && configured && !ready;
+  const accountUnavailable = checkingSession || (accountQuiz && !health.data);
+  const pendingAttempt = useRef<{
+    question: string;
+    choice: string;
+    id: string;
+  } | null>(null);
   const lessonHref = useReturnHref(slug);
   const reduce = useReducedMotion();
   const [round, setRound] = useState(questions);
@@ -114,14 +131,44 @@ export function PracticeRound({
     return () => window.clearTimeout(timer);
   }, [index, round, reduce]);
   const check = async () => {
-    if (!choice || busy || result || !question) return;
+    if (!choice || busy || result || !question || accountUnavailable) return;
     setBusy(true);
     setError("");
     try {
-      const r = await api<ChoiceResult>(
-        `/learning/practice/${slug}/${question.id}/check`,
-        { method: "POST", body: JSON.stringify({ option_id: choice }) },
-      );
+      let r: ChoiceResult;
+      if (accountQuiz && health.data?.account_writes_enabled) {
+        if (
+          pendingAttempt.current?.question !== question.id ||
+          pendingAttempt.current.choice !== choice
+        ) {
+          pendingAttempt.current = {
+            question: question.id,
+            choice,
+            id: crypto.randomUUID(),
+          };
+        }
+        r = await api<ChoiceResult>(
+          `/me/practice/${slug}/${question.id}/attempt`,
+          {
+            ownerId,
+            method: "POST",
+            body: JSON.stringify({
+              option_id: choice,
+              submission_id: pendingAttempt.current.id,
+            }),
+          },
+        );
+        pendingAttempt.current = null;
+        void cache.invalidateQueries({ queryKey: ["dashboard", ownerId] });
+      } else {
+        r = await api<ChoiceResult>(
+          `/learning/practice/${slug}/${question.id}/check`,
+          {
+            method: "POST",
+            body: JSON.stringify({ option_id: choice }),
+          },
+        );
+      }
       setResult(r);
       setHistory((h) => [...h, { question, choice, result: r }]);
       requestAnimationFrame(() =>
@@ -177,7 +224,13 @@ export function PracticeRound({
         <p>
           ตอบถูก {correct} ข้อ · ทบทวนอีกนิด {history.length - correct} ข้อ
         </p>
-        <p className="subtle">ผลรอบนี้อยู่เฉพาะหน้านี้ ไม่ได้บันทึกในบัญชี</p>
+        <p className="subtle">
+          {history.every((attempt) => attempt.result.persisted)
+            ? "บันทึกคำตอบในประวัติบัญชีแล้ว"
+            : history.some((attempt) => attempt.result.persisted)
+              ? "บันทึกคำตอบบางข้อในประวัติบัญชีแล้ว"
+              : "ผลรอบนี้อยู่เฉพาะหน้านี้ ไม่ได้บันทึกในบัญชี"}
+        </p>
         <div className="hero-actions">
           {correct < history.length && (
             <button className="primary" onClick={() => retry(true)}>
@@ -218,6 +271,14 @@ export function PracticeRound({
   }
   return (
     <div className="quiz-shell">
+      {checkingSession && <p role="status">กำลังตรวจบัญชี…</p>}
+      {accountQuiz && !health.data && (
+        <DataState
+          loading={health.isPending}
+          error={health.error}
+          retry={() => void health.refetch()}
+        />
+      )}
       <div className="quiz-topline">
         {variant === "quiz" && <Link to={lessonHref}>← กลับบทเรียน</Link>}
         <span>
@@ -304,7 +365,7 @@ export function PracticeRound({
             {!result && (
               <button
                 className="primary check-answer"
-                disabled={!choice || busy}
+                disabled={!choice || busy || accountUnavailable}
               >
                 {busy ? "กำลังดูคำตอบ…" : "ตรวจคำตอบ"}
                 <ArrowRight size={18} />

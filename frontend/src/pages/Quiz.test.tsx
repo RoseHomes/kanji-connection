@@ -8,10 +8,16 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MotionConfig } from "motion/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PracticeRound } from "./Quiz";
 import type { PracticeQuestion } from "../presentation-types";
-const mocks = vi.hoisted(() => ({ api: vi.fn() }));
+const mocks = vi.hoisted(() => ({ api: vi.fn(), ownerId: "" }));
 vi.mock("../api", () => ({ api: mocks.api }));
+vi.mock("../auth", () => ({
+  useAuth: () => ({
+    session: mocks.ownerId ? { user: { id: mocks.ownerId } } : null,
+  }),
+}));
 const questions: PracticeQuestion[] = [
   {
     id: "q1",
@@ -42,18 +48,58 @@ const response = (correct: boolean, second = false) => ({
   selection_explanation: "สังเกตรูปและความหมาย",
   persisted: false,
 });
-const mount = (qs = questions) =>
+const mount = (qs = questions, variant: "quiz" | "checkpoint" = "quiz") =>
   render(
-    <MotionConfig reducedMotion="always">
-      <MemoryRouter>
-        <PracticeRound questions={qs} slug="chapter-02" />
-      </MemoryRouter>
-    </MotionConfig>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MotionConfig reducedMotion="always">
+        <MemoryRouter>
+          <PracticeRound questions={qs} slug="chapter-02" variant={variant} />
+        </MemoryRouter>
+      </MotionConfig>
+    </QueryClientProvider>,
   );
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
+  mocks.ownerId = "";
   localStorage.clear();
+});
+it("saves authenticated quiz attempts and reuses the submission ID after a failed response", async () => {
+  mocks.ownerId = "reader-a";
+  mocks.api
+    .mockResolvedValueOnce({ account_writes_enabled: true })
+    .mockRejectedValueOnce(new Error("Network error"))
+    .mockResolvedValueOnce({ ...response(true), persisted: true });
+  mount(questions.slice(0, 1));
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+  const check = screen.getByRole("button", { name: /ตรวจคำตอบ/ });
+  await waitFor(() => expect(check).toBeEnabled());
+  fireEvent.click(check);
+  await screen.findByText("Network error");
+  fireEvent.click(check);
+  await screen.findByText("ถูกต้อง เชื่อมโยงได้แล้ว!");
+  const [first, second] = mocks.api.mock.calls.slice(1);
+  expect(first).toEqual(second);
+  expect(first[0]).toBe("/me/practice/chapter-02/q1/attempt");
+  expect(first[1]).toMatchObject({ ownerId: "reader-a", method: "POST" });
+  expect(JSON.parse(first[1].body)).toMatchObject({
+    option_id: "a",
+    submission_id: expect.any(String),
+  });
+  fireEvent.click(screen.getByRole("button", { name: /ดูผลการฝึก/ }));
+  await screen.findByText("บันทึกคำตอบในประวัติบัญชีแล้ว");
+});
+
+it("keeps a signed-in checkpoint stateless", async () => {
+  mocks.ownerId = "reader-a";
+  mocks.api.mockResolvedValue(response(true));
+  mount(questions.slice(0, 1), "checkpoint");
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  await screen.findByText("ถูกต้อง เชื่อมโยงได้แล้ว!");
+  expect(mocks.api.mock.calls.map(([path]) => path)).toEqual([
+    "/learning/practice/chapter-02/q1/check",
+  ]);
 });
 it("requires a radio selection, submits only an option ID and shows explicit feedback", async () => {
   mocks.api.mockResolvedValue(response(true));

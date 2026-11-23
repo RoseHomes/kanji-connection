@@ -36,6 +36,7 @@ import { ChoicePicker, SegmentedControl } from "./selection-controls";
 import { Disclosure } from "./disclosure";
 import { LessonReturnContext, withLessonReturn } from "./lesson-return";
 import { PracticeRound } from "./pages/Quiz";
+import { LessonSaveProgress } from "./lesson-save-progress";
 
 function QuickCheck({ slug, active }: { slug: string; active: boolean }) {
   const q = useQuery({
@@ -445,6 +446,9 @@ export function LessonExperience({
             ไปแบบฝึกหัดได้ทันที
             <ArrowRight size={16} />
           </Link>
+          {(mode === "full" || stage.phase === "review") && (
+            <LessonSaveProgress slug={lesson.slug} />
+          )}
         </div>
         <div className="phase-rail" aria-label="เส้นทางเรียนรู้ในบท">
           {activePhases.map((p, i) => {

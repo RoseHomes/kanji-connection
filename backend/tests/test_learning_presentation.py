@@ -280,6 +280,13 @@ def test_preview_snapshot_is_exact_and_database_enforced_readonly(edition, tmp_p
 
 
 def test_published_guest_practice_does_not_promote_private_source_c(edition):
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric import ec
+
     from app.content_revision import digest
 
     engine, audit = edition
@@ -293,6 +300,11 @@ def test_published_guest_practice_does_not_promote_private_source_c(edition):
     for row in data["quiz_questions"]:
         if row["lesson_id"] == first["id"] and row["stable_key"] != "comparison-c":
             row["status"] = "published"
+    kanji_id = next(
+        row["kanji_id"] for row in data["lesson_kanjis"] if row["lesson_id"] == first["id"]
+    )
+    kanji = next(row for row in data["kanjis"] if row["id"] == kanji_id)
+    kanji.update(review_status="published", access_tier="free")
     isolated = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -301,10 +313,43 @@ def test_published_guest_practice_does_not_promote_private_source_c(edition):
         for name, table in TABLES.items():
             if data[name]:
                 connection.execute(insert(table), data[name])
+    settings = Settings(
+        _env_file=None,
+        content_source="database",
+        enable_user_writes=True,
+        supabase_url="https://auth.example.test",
+        database_url="postgresql+psycopg://fixture:fixture@pooler.example.test:6543/postgres",
+        cors_origins=["https://frontend.example.test"],
+        vercel=True,
+        vercel_env="production",
+    )
+    app = create_app(settings, isolated)
+    key = ec.generate_private_key(ec.SECP256R1())
+    app.state.jwks_client = SimpleNamespace(
+        get_signing_key_from_jwt=lambda _: SimpleNamespace(key=key.public_key())
+    )
+
+    def bearer(owner):
+        now = datetime.now(timezone.utc)
+        token = jwt.encode(
+            {
+                "sub": str(owner),
+                "iss": "https://auth.example.test/auth/v1",
+                "aud": "authenticated",
+                "role": "authenticated",
+                "iat": now,
+                "exp": now + timedelta(minutes=5),
+                "session_id": str(uuid4()),
+            },
+            key,
+            algorithm="ES256",
+            headers={"kid": "fixture"},
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    first_owner, second_owner = uuid4(), uuid4()
     try:
-        with TestClient(
-            create_app(Settings(_env_file=None, content_source="database"), isolated)
-        ) as client:
+        with TestClient(app) as client:
             response = client.get("/api/v1/learning/practice/chapter-01")
             assert response.status_code == 200 and len(response.json()) == 14
             assert all(q["kind"] != "shape" for q in response.json())
@@ -324,6 +369,82 @@ def test_published_guest_practice_does_not_promote_private_source_c(edition):
                 ).status_code
                 == 404
             )
+            route = f"/api/v1/me/practice/chapter-01/{public_q['id']}/attempt"
+            data_in = {"option_id": public_q["correct_option_id"], "submission_id": str(uuid4())}
+            assert client.post(route, json=data_in).status_code == 401
+            headers = bearer(first_owner)
+            assert (
+                client.post(
+                    route, json={**data_in, "owner_id": str(second_owner)}, headers=headers
+                ).status_code
+                == 422
+            )
+            assert (
+                client.post(
+                    route, json={**data_in, "option_id": "not-an-option"}, headers=headers
+                ).status_code
+                == 422
+            )
+            saved = client.post(route, json=data_in, headers=headers)
+            assert saved.status_code == 200 and saved.json()["persisted"] is True
+            assert client.post(route, json=data_in, headers=headers).json() == saved.json()
+            other_option = next(
+                option["id"]
+                for option in public_q["options"]
+                if option["id"] != data_in["option_id"]
+            )
+            assert (
+                client.post(
+                    route, json={**data_in, "option_id": other_option}, headers=headers
+                ).status_code
+                == 409
+            )
+            assert (
+                client.put(
+                    "/api/v1/me/progress/chapter-01",
+                    json={"expected_version": 0, "progress": 100},
+                    headers=headers,
+                ).status_code
+                == 200
+            )
+            assert (
+                client.put(
+                    f"/api/v1/me/reviews/{kanji['character']}",
+                    json={"expected_version": 0, "knew": True},
+                    headers=headers,
+                ).status_code
+                == 200
+            )
+            assert client.get("/api/v1/me/dashboard").status_code == 401
+            second = client.get("/api/v1/me/dashboard", headers=bearer(second_owner)).json()
+            assert (
+                second["quiz"]["recent"] == [] and second["lessons"] == [] and second["cards"] == {}
+            )
+            assert (
+                client.put(
+                    "/api/v1/me/progress/chapter-01",
+                    json={"expected_version": 1, "progress": 0},
+                    headers=bearer(second_owner),
+                ).status_code
+                == 409
+            )
+            assert (
+                client.put(
+                    f"/api/v1/me/reviews/{kanji['character']}",
+                    json={"expected_version": 1, "knew": False},
+                    headers=bearer(second_owner),
+                ).status_code
+                == 409
+            )
+        with TestClient(app) as new_client:
+            headers = bearer(first_owner)
+            for _ in range(2):
+                dashboard = new_client.get("/api/v1/me/dashboard", headers=headers)
+                assert dashboard.headers["cache-control"] == "private, no-store"
+                payload = dashboard.json()
+                assert payload["quiz"]["graded"] == payload["quiz"]["correct"] == 1
+                assert payload["lessons"][0]["progress"] == 100
+                assert payload["cards"][kanji["character"]]["reviews"] == 1
         with isolated.connect() as connection:
             assert digest(snapshot(connection)) == digest(data)
     finally:

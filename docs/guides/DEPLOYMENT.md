@@ -121,7 +121,7 @@ private environment UI. No real environment file belongs in the deployment.
 | CORS_ORIGINS                  | JSON array of exact approved frontend HTTPS origins         |
 | SUPABASE_URL                  | Same existing project origin as the frontend                |
 | SUPABASE_JWT_AUDIENCE         | authenticated                                               |
-| ENABLE_USER_WRITES            | false                                                       |
+| ENABLE_USER_WRITES            | true for Production account persistence, false for Preview   |
 | DEVELOPMENT_USER_IDS          | []                                                          |
 
 Use the actual Connect dialog URL already configured locally; do not infer a
@@ -136,10 +136,12 @@ Optional tuning names are **DATABASE_SSLMODE**, **DATABASE_SSLROOTCERT**,
 **DATABASE_CONNECT_TIMEOUT**, **DATABASE_STATEMENT_TIMEOUT_MS**,
 **DATABASE_POOL_TIMEOUT** and **SUPABASE_JWT_AUDIENCE**. Vercel supplies **VERCEL**;
 the entrypoint also forces hosted safety if that system variable is unavailable.
-Keep **EXPOSE_SAMPLES=false**, **DEVELOPMENT_USER_IDS=[]** and
-**ENABLE_USER_WRITES=false**. The last setting intentionally blocks progress/quiz
-writes until a separate authorization to enable hosted writes; it is not an Auth
-configuration error.
+Keep **EXPOSE_SAMPLES=false** and **DEVELOPMENT_USER_IDS=[]**. Set
+**ENABLE_USER_WRITES=true** in the backend project's **Production** environment
+only and redeploy the backend. Vercel's system **VERCEL_ENV=production** is
+required for this opt-in. Leave writes off in Preview and Development. Deploy
+the matching frontend so lesson completion and the current multiple-choice
+quiz use the authenticated write APIs.
 
 Pool size remains one per function process, zero overflow, bounded wait and
 prepared statements disabled. No durable disk, background worker, startup schema
