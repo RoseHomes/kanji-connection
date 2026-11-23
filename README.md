@@ -14,6 +14,10 @@ Kanji Connection is a Thai-language study site for Thai-speaking learners of Jap
 
 The personal dashboard and review area require sign-in. Account writes are disabled on the hosted site.
 
+Supabase Auth handles email confirmation and password recovery. When configured, Cloudflare Turnstile protects login, registration, and password-reset requests, with Supabase verifying each challenge token. The app gives clear retry guidance for rate limits and uses account-neutral error messages.
+
+The frontend requires at least 12 characters for new passwords and rejects passwords that match the email address or its local part, as well as obvious weak patterns. Supabase enforces the minimum length set in its Auth settings and can block leaked passwords on eligible plans. Configure the server minimum to 12 to apply it to direct API requests. The email-match and custom weak-pattern checks are specific to the frontend. See the [authentication setup guide](docs/guides/AUTH_AND_PROGRESS.md#roll-out-turnstile-and-password-protection).
+
 ## Technology stack
 
 | Area               | Technologies                                                                          |
@@ -73,8 +77,9 @@ Use the [frontend example](frontend/.env.example) and [backend example](backend/
 | `VITE_API_URL`                  | API origin for the browser. Leave empty for the local proxy.        |
 | `VITE_SUPABASE_URL`             | Supabase project origin for browser sign-in.                        |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Public publishable key or legacy anon key for browser sign-in.      |
+| `VITE_TURNSTILE_SITE_KEY`       | Optional public site key for the Turnstile widget.                 |
 
-From `frontend/`, use `npm run build:demo` for a local build that can run with the sample API. The production command, `npm run build`, requires the three `VITE_` variables listed above, with exact HTTPS API and Supabase origins. See the [environment guide](docs/guides/ENVIRONMENT.md) and [deployment guide](docs/guides/DEPLOYMENT.md) for additional configuration.
+From `frontend/`, use `npm run build:demo` for a local build that can run with the sample API. The production command, `npm run build`, requires `VITE_API_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY`, with exact HTTPS API and Supabase origins. Deploy the frontend with the public site key before enabling CAPTCHA in Supabase, where the Turnstile secret is configured. See the [environment guide](docs/guides/ENVIRONMENT.md) and [deployment guide](docs/guides/DEPLOYMENT.md) for additional configuration.
 
 ## Copyright and usage
 

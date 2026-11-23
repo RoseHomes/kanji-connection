@@ -221,26 +221,28 @@ export default function Account() {
                       : "เข้าสู่ระบบ"}
               </button>
             </form>
-            <button
-              className="text-link"
-              disabled={busy}
-              onClick={() => switchMode(mode === "login" ? "signup" : "login")}
-            >
-              {reset
-                ? "กลับไปเข้าสู่ระบบ"
-                : signup
-                  ? "มีบัญชีแล้ว · เข้าสู่ระบบ"
-                  : "ยังไม่มีบัญชี · สมัครสมาชิก"}
-            </button>
-            {mode === "login" && (
+            <div className="account-form-actions">
               <button
                 className="text-link"
                 disabled={busy}
-                onClick={() => switchMode("reset")}
+                onClick={() => switchMode(mode === "login" ? "signup" : "login")}
               >
-                ลืมรหัสผ่าน?
+                {reset
+                  ? "กลับไปเข้าสู่ระบบ"
+                  : signup
+                    ? "มีบัญชีแล้ว · เข้าสู่ระบบ"
+                    : "ยังไม่มีบัญชี · สมัครสมาชิก"}
               </button>
-            )}
+              {mode === "login" && (
+                <button
+                  className="text-link"
+                  disabled={busy}
+                  onClick={() => switchMode("reset")}
+                >
+                  ลืมรหัสผ่าน?
+                </button>
+              )}
+            </div>
             {message && (
               <p role="status" className="notice">
                 {message}

@@ -1801,7 +1801,11 @@ footer {
 .learning-form button {
   width: 100%;
 }
-.account-panel > .text-link {
+.account-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
   margin-top: 18px;
 }
 .gate-page {
