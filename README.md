@@ -1,70 +1,55 @@
 # Kanji Connection
 
-A Thai-language Kanji learning application built around visual comparison,
-contextual readings, quizzes and spaced review. The book dataset and PDF are not
-distributed with this repository; the reviewed working edition is served from
-the configured Supabase database.
+**[Visit Website](https://kanji-connection-frontend.vercel.app)**
 
-## Project status
-
-Authentication, persistent learning progress, quizzes, flashcards, explicit
-guest-data synchronization and the dashboard are implemented. The
-`2026-11-19-final-v2` working edition was published in Supabase: all 30 chapters,
-94 comparison groups and 450 multiple-choice questions are publicly readable
-without an account. This publication is a release decision, not a claim of full
-editorial approval; the four open educational review items remain separate.
-Hosted account writes and development content access stay disabled. See the
-[implementation status](docs/reports/IMPLEMENTATION_STATUS.md) for dated
-evidence and limits.
-
-## Tech stack
-
-| Layer                | Technologies                                                        |
-| -------------------- | ------------------------------------------------------------------- |
-| Frontend             | React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS |
-| Backend              | Python, FastAPI, Pydantic, SQLAlchemy, Alembic                      |
-| Identity and storage | Supabase Authentication and PostgreSQL                              |
-| Quality checks       | Vitest, Testing Library, Playwright, pytest, ESLint, Ruff           |
-| Deployment target    | Separate Vercel frontend and FastAPI projects                       |
+Kanji Connection is a Thai-language study site for Thai-speaking learners of Japanese. It teaches Kanji through visual patterns, vocabulary in context, and side-by-side comparisons. The lessons, comparisons, and quizzes are available without an account.
 
 ## Features
 
-- Responsive lesson, vocabulary, comparison, explorer and review views with
-  Thai/Japanese text.
-- Source-provided group furigana, contextual reading notes and PDF provenance
-  where available.
-- Published public lessons, Kanji details and practice need no account. Empty
-  states remain for filters or future unpublished content.
-- Server-graded public quizzes keep results in component state for the current
-  visit only. Answer keys are returned only after a submitted choice; the four
-  open editorial rubric items remain outside the graded quiz.
-- Personal dashboards, review queues and progress require authentication;
-  persistence also requires the existing server write permission.
-- Legacy browser/cloud sync previews preserve explicit conflict choices, without
-  automatically importing old records or storing new anonymous quiz history.
-- Private content filters, verified bearer tokens and a hosted guard that
-  disables development access.
+- **30 Kanji lessons.** Guided Learning breaks each chapter into small groups with readings, meanings, memory aids, vocabulary, comparisons, and optional quick checks.
+- **Full Lesson mode.** Review all the material in a chapter in one view.
+- **94 curated comparison groups.** Choose similar characters to study side by side.
+- **450 multiple-choice questions.** Check answers as you go, read explanations, and revisit mistakes after each quiz.
+- **Kanji explorer.** Look up individual characters and browse their readings, vocabulary, and related Kanji.
 
-See the [public learning and redesign report](docs/reports/PUBLIC_LEARNING_REDESIGN.md)
-for the access matrix, visual system, actual verification and remaining approval limits.
+The personal dashboard and review area require sign-in. Account writes are disabled on the hosted site.
 
-Book-dependent features require separately authorized private inputs. Missing
-readings, diagram cores and translations are not invented, and visual mnemonics
-are not presented as verified historical etymology.
+## Technology stack
 
-## Run the sample locally
+| Area               | Technologies                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| Frontend           | React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS, Motion, Radix UI |
+| Backend            | Python, FastAPI, Pydantic, SQLAlchemy, Alembic                                        |
+| Data and identity  | PostgreSQL and Supabase Auth                                                          |
+| Hosting            | Separate Vercel projects for the frontend and API                                     |
+| Development checks | Vitest, Testing Library, Playwright, pytest, ESLint, Ruff                             |
 
-Use Node 22.x (22.12 or newer) and Python 3.13. No Supabase credentials or book
-files are needed for sample mode. On macOS/Linux, from the project root:
+## Project structure
+
+| Path        | Contents                                                    |
+| ----------- | ----------------------------------------------------------- |
+| `frontend/` | React application, styles, and browser tests                |
+| `backend/`  | FastAPI application, database migrations, and backend tests |
+| `content/`  | Content schema and format documentation                     |
+| `docs/`     | Setup guides and architecture documentation                 |
+| `scripts/`  | Project maintenance and verification scripts                |
+
+## Local development
+
+Install **Node.js 22.x (22.12 or newer)**, npm, and **Python 3.13**. Clone the repository. The bundled sample runs without a Supabase project. Database mode serves published lessons from a configured database.
+
+Start the API from the repository root on macOS or Linux:
 
 ```sh
 python3.13 -m venv .venv
-.venv/bin/python -m pip install -r backend/requirements-dev.txt
+.venv/bin/python -m pip install -r backend/requirements.txt
 cd backend
 CONTENT_SOURCE=sample ENABLE_USER_WRITES=false ../.venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-In a second terminal:
+For Windows, see the PowerShell instructions in the [getting started guide](docs/guides/GETTING_STARTED.md).
+
+Start the frontend in a second terminal from the repository root:
 
 ```sh
 cd frontend
@@ -72,57 +57,25 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>; API schemas are at <http://127.0.0.1:8000/docs>.
-The [getting-started guide](docs/guides/GETTING_STARTED.md) includes Windows
-PowerShell, configuration choices and troubleshooting. Never overwrite an
-existing environment file.
+Open the [local website](http://127.0.0.1:5173) or the [API documentation](http://127.0.0.1:8000/docs). Leave `VITE_API_URL` unset or empty so Vite proxies `/api` to the local FastAPI server.
 
-## Architecture and checks
+## Environment variables
 
-The SPA calls FastAPI under `/api/v1`. FastAPI validates Supabase tokens,
-filters content by publication/access status, and scopes learning records to the
-verified account. PostgreSQL transactions protect concurrent progress updates.
-SQLite is used only for isolated tests and local development. Nothing migrates,
-imports or publishes at startup.
+Use the [frontend example](frontend/.env.example) and [backend example](backend/.env.example) as references for your own environment. Keep database connection strings on the server.
 
-See the [architecture](docs/architecture/ARCHITECTURE.md),
-[API reference](docs/architecture/API.md) and
-[database diagram](docs/architecture/ERD.md). The
-[testing guide](docs/guides/TESTING.md) explains local checks, private-input
-skips and disposable PostgreSQL requirements. Production builds require three
-public configuration variables; an explicit local-only `npm run build:demo` is
-available without hosted configuration.
+| Variable                        | Purpose                                                             |
+| ------------------------------- | ------------------------------------------------------------------- |
+| `CONTENT_SOURCE`                | Selects `sample` or `database` mode for the API.                    |
+| `DATABASE_URL`                  | Server-side PostgreSQL connection string required in database mode. |
+| `CORS_ORIGINS`                  | JSON array of allowed frontend origins for cross-origin API calls.  |
+| `SUPABASE_URL`                  | Supabase project origin used by the API to verify account tokens.   |
+| `ENABLE_USER_WRITES`            | Keep `false` for read-only account access.                          |
+| `VITE_API_URL`                  | API origin for the browser. Leave empty for the local proxy.        |
+| `VITE_SUPABASE_URL`             | Supabase project origin for browser sign-in.                        |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Public publishable key or legacy anon key for browser sign-in.      |
 
-## Documentation and publication
-
-Start with the [documentation index](docs/README.md). Current guides are
-separate from dated verification reports and archived plans. The
-[deployment runbook](docs/guides/DEPLOYMENT.md) describes Vercel setup; it does
-not authorize deployment or publication.
-
-The PDF, extracted dataset, credentials, private verification artifacts and
-browser profiles are excluded from public distribution. Review the
-[repository publication checklist](docs/guides/PUBLICATION.md) before any push,
-including generated JSON artifacts and content rights.
-The [publication safety audit](docs/reports/PUBLICATION_READINESS.md) records
-the resolved wording findings and final Git staging review. A successful safety
-review does not authorize a commit, push, deployment or educational publication.
+From `frontend/`, use `npm run build:demo` for a local build that can run with the sample API. The production command, `npm run build`, requires the three `VITE_` variables listed above, with exact HTTPS API and Supabase origins. See the [environment guide](docs/guides/ENVIRONMENT.md) and [deployment guide](docs/guides/DEPLOYMENT.md) for additional configuration.
 
 ## Copyright and usage
 
-**Copyright — All Rights Reserved.** The project's source code is publicly viewable for
-developer portfolio and evaluation purposes only. This is not an open-source
-project. Copying, redistribution, modification and commercial reuse require
-prior permission from the copyright holder, except where applicable law or
-GitHub's platform terms provide otherwise.
-
-Private educational content, textbook materials, datasets, artwork and editorial
-corrections are not licensed for reuse or distributed with this repository.
-Public visibility grants no additional rights to those materials.
-
-Third-party libraries, fonts, dictionaries and other external materials remain
-subject to their respective copyright holders' licenses and attribution
-requirements. This notice does not claim ownership of them or override their
-terms. See the [third-party notices](docs/guides/THIRD_PARTY.md) and
-[GitHub's licensing guidance](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository)
-for the distinction between public visibility and reuse permission.
+**All rights reserved.** The project's source code is available for portfolio and evaluation purposes. Copying, modification, redistribution, or commercial reuse requires permission from the copyright holder, subject to applicable law and GitHub's terms. Third-party materials remain subject to their respective licenses. See the [third-party notices](docs/guides/THIRD_PARTY.md).

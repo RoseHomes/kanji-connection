@@ -146,12 +146,14 @@ function PersonalDashboard() {
     records?.quiz.graded ??
     local.attempts.filter((a) => a.result.status === "graded").length;
   return (
-    <div className="page section">
-      <p className="eyebrow">YOUR GROWING KNOWLEDGE</p>
-      <h1>พื้นที่การเรียนรู้ของคุณ</h1>
-      <p className="lead">
-        {session ? "ความก้าวหน้าของบัญชีนี้" : "ผู้เยี่ยมชม · บันทึกเฉพาะเบราว์เซอร์เครื่องนี้"}
-      </p>
+    <div className="page section personal-dashboard">
+      <header>
+        <p className="eyebrow">YOUR GROWING KNOWLEDGE</p>
+        <h1>พื้นที่การเรียนรู้ของคุณ</h1>
+        <p className="lead">
+          {session ? "ความก้าวหน้าของบัญชีนี้" : "ผู้เยี่ยมชม · บันทึกเฉพาะเบราว์เซอร์เครื่องนี้"}
+        </p>
+      </header>
       {!session && (
         <Link className="button primary" to="/account">
           เข้าสู่ระบบเพื่อบันทึกข้ามอุปกรณ์
@@ -186,7 +188,7 @@ function PersonalDashboard() {
               <p>การ์ดที่ถึงกำหนด</p>
             </article>
           </div>
-          <div className="hero-actions">
+          <div className="dashboard-actions">
             <Link className="button primary" to="/review">
               ทบทวนแฟลชการ์ด
             </Link>
@@ -200,62 +202,81 @@ function PersonalDashboard() {
           {(records?.quiz.pending ??
             local.attempts.filter((a) => a.result.correct === null).length) >
             0 && <p className="notice">มีคำตอบแบบอธิบายที่ไม่รวมในคะแนนอัตโนมัติ</p>}
-          <h2>ความก้าวหน้ารายบท</h2>
-          {records?.lessons.length === 0 && (
-            <p className="subtle">
-              ยังไม่มีบทที่บันทึกความก้าวหน้า เลือกบทด้านล่างเพื่อเริ่มอ่าน
-            </p>
-          )}
-          {records?.lessons.map((l) => (
-            <article className="notice" key={l.slug}>
-              <Link to={`/lessons/${l.slug}`}>{l.title}</Link>
-              <progress value={l.progress} max={100} aria-label={l.title} />
-              <span>{l.progress}% · การอ่านที่บันทึกเอง</span>
-            </article>
-          ))}
+          <section
+            className="dashboard-section"
+            aria-labelledby="dashboard-progress"
+          >
+            <h2 id="dashboard-progress">ความก้าวหน้ารายบท</h2>
+            {records?.lessons.length === 0 && (
+              <p className="subtle">
+                ยังไม่มีบทที่บันทึกความก้าวหน้า เลือกบทด้านล่างเพื่อเริ่มอ่าน
+              </p>
+            )}
+            {records?.lessons.map((l) => (
+              <article className="notice dashboard-progress-row" key={l.slug}>
+                <Link to={`/lessons/${l.slug}`}>{l.title}</Link>
+                <progress value={l.progress} max={100} aria-label={l.title} />
+                <span>{l.progress}% · การอ่านที่บันทึกเอง</span>
+              </article>
+            ))}
+          </section>
           {records && (
-            <>
-              <h2>ผลแบบฝึกหัดล่าสุด</h2>
+            <section
+              className="dashboard-section"
+              aria-labelledby="dashboard-results"
+            >
+              <h2 id="dashboard-results">ผลแบบฝึกหัดล่าสุด</h2>
               {records.quiz.recent.length === 0 && (
                 <p className="subtle">ยังไม่มีคำตอบที่บันทึกในบัญชีนี้</p>
               )}
-              <ul className="history-list">
-                {records.quiz.recent.map((a, i) => (
-                  <li key={`${a.question_key}:${i}`}>
-                    <span>{questionLabel(a.question_key)}</span>
-                    <span>
-                      {a.correct === null
-                        ? "ไม่คิดคะแนนอัตโนมัติ"
-                        : a.correct
-                          ? "ถูกต้อง"
-                          : "ลองใหม่"}{" "}
-                      · {new Date(a.created_at).toLocaleDateString("th-TH")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
+              {records.quiz.recent.length > 0 && (
+                <ul className="history-list">
+                  {records.quiz.recent.map((a, i) => (
+                    <li key={`${a.question_key}:${i}`}>
+                      <span>{questionLabel(a.question_key)}</span>
+                      <span>
+                        {a.correct === null
+                          ? "ไม่คิดคะแนนอัตโนมัติ"
+                          : a.correct
+                            ? "ถูกต้อง"
+                            : "ลองใหม่"}{" "}
+                        · {new Date(a.created_at).toLocaleDateString("th-TH")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           )}
         </>
       )}
-      <h2>เลือกบทสำหรับฝึก</h2>
-      {!session && (
-        <p className="subtle">ประวัติแบบฝึกหัดในเครื่องเก็บล่าสุดไม่เกิน 200 ข้อ</p>
-      )}
-      <DataState
-        loading={lessons.isPending}
-        error={lessons.error}
-        retry={() => void lessons.refetch()}
-      />
-      <div className="lesson-grid">
-        {lessons.data?.map((l) => (
-          <Link className="notice" key={l.slug} to={`/quiz/${l.slug}`}>
-            {l.title}
-            {l.private_development && <small> · เนื้อหาส่วนตัวสำหรับทดสอบ</small>}
-          </Link>
-        ))}
-      </div>
-      {lessons.data?.length === 0 && <p>ยังไม่มีบทที่เปิดให้ฝึกในบัญชีนี้</p>}
+      <section
+        className="dashboard-section"
+        aria-labelledby="dashboard-practice"
+      >
+        <h2 id="dashboard-practice">เลือกบทสำหรับฝึก</h2>
+        {!session && (
+          <p className="subtle">ประวัติแบบฝึกหัดในเครื่องเก็บล่าสุดไม่เกิน 200 ข้อ</p>
+        )}
+        <DataState
+          loading={lessons.isPending}
+          error={lessons.error}
+          retry={() => void lessons.refetch()}
+        />
+        {!!lessons.data?.length && (
+          <div className="lesson-grid">
+            {lessons.data?.map((l) => (
+              <Link className="notice" key={l.slug} to={`/quiz/${l.slug}`}>
+                {l.title}
+                {l.private_development && (
+                  <small> · เนื้อหาส่วนตัวสำหรับทดสอบ</small>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
+        {lessons.data?.length === 0 && <p>ยังไม่มีบทที่เปิดให้ฝึกในบัญชีนี้</p>}
+      </section>
       {session && (
         <section className="notice sync-panel">
           <h2>นำข้อมูลผู้เยี่ยมชมเข้าบัญชี</h2>
