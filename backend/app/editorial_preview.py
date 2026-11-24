@@ -6,7 +6,7 @@ import time
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 
@@ -111,8 +111,10 @@ def create_preview_app(settings, engine, capability: str, *, origin="http://127.
         return curated_comparisons(request, identity, db)
 
     @app.get("/api/v1/learning/practice/{slug}")
-    def practice_list(slug: str, request: Request, db: DB):
-        return practice_questions(slug, request, identity, db)
+    def practice_list(
+        slug: str, request: Request, response: Response, db: DB, include_feedback: bool = False
+    ):
+        return practice_questions(slug, request, response, identity, db, include_feedback)
 
     @app.post("/api/v1/learning/practice/{slug}/{question_id}/check")
     def practice_answer(slug: str, question_id: str, body: ChoiceInput, request: Request, db: DB):

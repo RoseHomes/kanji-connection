@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { api } from "../api";
-import { DataState, EmptyState, KanjiVisual, Reading } from "../components";
+import { DataState, EmptyState, KanjiVisual, ReadingAudioRow } from "../components";
 import { AudioText, KanjiReadingList } from "../lesson-audio";
 import type { Kanji } from "../types";
 import {
@@ -105,8 +105,9 @@ export default function KanjiDetail() {
                   className="vocabulary-item"
                   key={`${v.written_form}:${v.reading}`}
                 >
-                  <Reading text={v.written_form} reading={v.reading} audioKind="word" />
-                  <p>{v.meaning_th}</p>
+                  <ReadingAudioRow text={v.written_form} reading={v.reading} kind="word">
+                    <p>{v.meaning_th}</p>
+                  </ReadingAudioRow>
                   {v.usage_notes && <small><AudioText text={v.usage_notes} /></small>}
                 </article>
               ))}

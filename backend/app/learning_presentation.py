@@ -198,8 +198,24 @@ def practice(db, settings, user, slug):
     return objective_questions(cards, vocabulary, originals, rubric, slug=slug)
 
 
-def public_question(question):
-    return {k: question[k] for k in ["id", "prompt", "kind", "options"]}
+def practice_feedback(question):
+    correct = next(o for o in question["options"] if o["id"] == question["correct_option_id"])
+    return {
+        "correct_option_id": correct["id"],
+        "correct_text": correct["text"],
+        "explanation": question["explanation"],
+        "selection_explanations": {
+            "correct": "เลือกได้ตรงกับสิ่งที่เรียนแล้ว",
+            "incorrect": "ตัวเลือกนี้ไม่ตรงกับคำหรือจุดต่างที่โจทย์ถาม",
+        },
+    }
+
+
+def public_question(question, *, include_feedback=False):
+    public = {k: question[k] for k in ["id", "prompt", "kind", "options"]}
+    if include_feedback:
+        public["feedback"] = practice_feedback(question)
+    return public
 
 
 def check_choice(db, settings, user, slug, question_id, choice_id, *, submission_id=None):
@@ -209,15 +225,13 @@ def check_choice(db, settings, user, slug, question_id, choice_id, *, submission
     selected = next((o for o in question["options"] if o["id"] == choice_id), None)
     if selected is None:
         raise HTTPException(422, "Choose one of the provided options")
-    correct = next(o for o in question["options"] if o["id"] == question["correct_option_id"])
+    feedback = practice_feedback(question)
+    explanations = feedback.pop("selection_explanations")
+    correct = choice_id == feedback["correct_option_id"]
     result = {
-        "correct": choice_id == correct["id"],
-        "correct_option_id": correct["id"],
-        "correct_text": correct["text"],
-        "explanation": question["explanation"],
-        "selection_explanation": "ตัวเลือกนี้ไม่ตรงกับคำหรือจุดต่างที่โจทย์ถาม"
-        if choice_id != correct["id"]
-        else "เลือกได้ตรงกับสิ่งที่เรียนแล้ว",
+        **feedback,
+        "correct": correct,
+        "selection_explanation": explanations["correct" if correct else "incorrect"],
         "persisted": False,
     }
     if submission_id is not None:

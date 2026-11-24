@@ -212,12 +212,40 @@ def test_mcq_rejects_fabricated_options_free_text_and_unknown_question(preview):
     )
 
 
+def test_practice_feedback_is_opt_in_and_matches_server_grading(preview):
+    client, _, _ = preview
+    path = "/api/v1/learning/practice/chapter-01"
+    plain = client.get(path).json()[0]
+    response = client.get(path, params={"include_feedback": "true"})
+    assert "feedback" not in plain
+    assert "no-store" in response.headers["Cache-Control"]
+    question = response.json()[0]
+    feedback = question.pop("feedback")
+    assert question == plain
+    explanations = feedback.pop("selection_explanations")
+    for option in question["options"]:
+        grade = client.post(
+            f"{path}/{question['id']}/check", json={"option_id": option["id"]}
+        ).json()
+        correct = option["id"] == feedback["correct_option_id"]
+        assert grade == {
+            **feedback,
+            "correct": correct,
+            "persisted": False,
+            "selection_explanation": explanations["correct" if correct else "incorrect"],
+        }
+
+
 def test_new_public_routes_do_not_bypass_private_access(edition):
     engine, _ = edition
     with TestClient(
         create_app(Settings(_env_file=None, content_source="database"), engine)
     ) as client:
         assert client.get("/api/v1/learning/comparison-groups").json() == []
+        assert (
+            client.get("/api/v1/learning/practice/chapter-01?include_feedback=true").status_code
+            == 404
+        )
         for n in range(1, 31):
             assert client.get(f"/api/v1/learning/practice/chapter-{n:02}").status_code == 404
         assert (
@@ -370,9 +398,23 @@ def test_published_guest_practice_does_not_promote_private_source_c(edition):
                 == 404
             )
             route = f"/api/v1/me/practice/chapter-01/{public_q['id']}/attempt"
-            data_in = {"option_id": public_q["correct_option_id"], "submission_id": str(uuid4())}
+            preloaded = {
+                q["id"]: q["feedback"]
+                for q in client.get(
+                    "/api/v1/learning/practice/chapter-01?include_feedback=true"
+                ).json()
+            }
+            assert private_c["id"] not in preloaded
+            data_in = {
+                "option_id": preloaded[public_q["id"]]["correct_option_id"],
+                "submission_id": str(uuid4()),
+            }
             assert client.post(route, json=data_in).status_code == 401
             headers = bearer(first_owner)
+            assert (
+                client.post(route, json={**data_in, "correct": False}, headers=headers).status_code
+                == 422
+            )
             assert (
                 client.post(
                     route, json={**data_in, "owner_id": str(second_owner)}, headers=headers
@@ -386,7 +428,8 @@ def test_published_guest_practice_does_not_promote_private_source_c(edition):
                 == 422
             )
             saved = client.post(route, json=data_in, headers=headers)
-            assert saved.status_code == 200 and saved.json()["persisted"] is True
+            assert saved.status_code == 200
+            assert saved.json()["persisted"] is True and saved.json()["correct"] is True
             assert client.post(route, json=data_in, headers=headers).json() == saved.json()
             other_option = next(
                 option["id"]

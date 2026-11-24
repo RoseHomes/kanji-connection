@@ -1,5 +1,6 @@
 import { ArrowRight, RotateCcw, BookOpen, LockKeyhole } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 import type { Kanji } from "./types";
 import type { ComparisonCharacter } from "./presentation-types";
 import { StudyContent } from "./study-content";
@@ -80,12 +81,39 @@ export function Reading({ text, reading, audioKind, slug }: {
     label
   );
 }
-export function ComparisonReading({ item, slug }: { item: ComparisonCharacter; slug: string }) {
+export function AudioContentRow({ children, audio }: { children: ReactNode; audio: ReactNode }) {
+  return (
+    <div className="reading-audio-row">
+      <div className="reading-audio-copy">{children}</div>
+      {audio}
+    </div>
+  );
+}
+
+export function ReadingAudioRow({ text, reading, kind, slug, children }: {
+  text: string;
+  reading?: string;
+  kind: LessonAudioKind;
+  slug?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <AudioContentRow audio={<LessonAudioButton kind={kind} text={text} reading={reading} slug={slug} />}>
+      <Reading text={text} reading={reading} />
+      {children}
+    </AudioContentRow>
+  );
+}
+
+export function ComparisonReading({ item, slug, children }: {
+  item: ComparisonCharacter;
+  slug: string;
+  children?: ReactNode;
+}) {
   const { reading } = item;
   if (reading.kind === "component") {
     return (
-      <span className="lesson-audio-line">
-        <span lang="ja">{reading.reading}</span>
+      <AudioContentRow audio={
         <LessonAudioButton
           kind="component"
           text={reading.form || item.character}
@@ -93,10 +121,17 @@ export function ComparisonReading({ item, slug }: { item: ComparisonCharacter; s
           slug={slug}
           fallbackKind={reading.form ? undefined : "kanji"}
         />
-      </span>
+      }>
+        <span lang="ja">{reading.reading}</span>
+        {children}
+      </AudioContentRow>
     );
   }
-  return <Reading text={reading.form} reading={reading.reading} audioKind={reading.kind === "word" ? "word" : "kanji"} slug={slug} />;
+  return (
+    <ReadingAudioRow text={reading.form} reading={reading.reading} kind={reading.kind === "word" ? "word" : "kanji"} slug={slug}>
+      {children}
+    </ReadingAudioRow>
+  );
 }
 export function ReadOnlyNotice() {
   return (

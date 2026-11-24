@@ -42,7 +42,7 @@ import { LessonAudio, LessonAudioButton } from "./lesson-audio";
 function QuickCheck({ slug, active }: { slug: string; active: boolean }) {
   const q = useQuery({
     queryKey: ["practice", slug],
-    queryFn: () => api<PracticeQuestion[]>(`/learning/practice/${slug}`),
+    queryFn: () => api<PracticeQuestion[]>(`/learning/practice/${slug}?include_feedback=true`),
     enabled: active,
   });
   const questions = useMemo(

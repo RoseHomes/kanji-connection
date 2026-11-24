@@ -99,8 +99,9 @@ export default function Home() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: reduce ? 0 : 0.18 }}
                 >
-                  <ComparisonReading item={card} slug={group.slug} />
-                  <strong>{card.meaning_th}</strong>
+                  <ComparisonReading item={card} slug={group.slug}>
+                    <strong>{card.meaning_th}</strong>
+                  </ComparisonReading>
                   <p><AudioText text={card.memory_note} slug={group.slug} /></p>
                 </m.div>
               </AnimatePresence>

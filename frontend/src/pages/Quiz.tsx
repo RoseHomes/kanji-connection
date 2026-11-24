@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { m, AnimatePresence, useReducedMotion } from "motion/react";
@@ -18,6 +18,12 @@ import { DataState, EmptyState } from "../components";
 import { PageHeading } from "../ui";
 import { useReturnHref } from "../lesson-return";
 import {
+  queuePracticeSubmission,
+  savePracticeSubmission,
+  usePracticeSaves,
+  type PracticeSubmission,
+} from "../practice-saves";
+import {
   AudioText,
   LessonAudioButton,
   useLessonAudioAvailable,
@@ -27,6 +33,7 @@ type Attempt = {
   question: PracticeQuestion;
   choice: string;
   result: ChoiceResult;
+  submissionId?: string;
 };
 const singleKanji = /^\p{Script=Han}$/u;
 const japaneseScript =
@@ -184,7 +191,7 @@ export default function Quiz() {
   });
   const questions = useQuery({
     queryKey: ["practice", slug],
-    queryFn: () => api<PracticeQuestion[]>(`/learning/practice/${slug}`),
+    queryFn: () => api<PracticeQuestion[]>(`/learning/practice/${slug}?include_feedback=true`),
     enabled: !!slug,
   });
   const lesson = catalog.data?.find((l) => l.slug === slug);
@@ -259,17 +266,14 @@ export function PracticeRound({
   });
   const checkingSession = variant === "quiz" && configured && !ready;
   const accountUnavailable = checkingSession || (accountQuiz && !health.data);
-  const pendingAttempt = useRef<{
-    question: string;
-    choice: string;
-    id: string;
-  } | null>(null);
+  const savingOwner = accountQuiz && health.data?.account_writes_enabled ? ownerId : undefined;
+  const pendingAttempt = useRef<PracticeSubmission | null>(null);
+  const submitting = useRef(false);
   const lessonHref = useReturnHref(slug);
   const reduce = useReducedMotion();
   const [round, setRound] = useState(questions);
   const [index, setIndex] = useState(0);
   const [choice, setChoice] = useState("");
-  const [result, setResult] = useState<ChoiceResult | null>(null);
   const [history, setHistory] = useState<Attempt[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -277,6 +281,25 @@ export function PracticeRound({
   const feedback = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const question = round[index];
+  const result = history[index]?.result;
+  const onSaved = useCallback((id: string, saved: ChoiceResult) => {
+    setHistory((attempts) => attempts.map((attempt) =>
+      attempt.submissionId === id ? { ...attempt, result: saved } : attempt,
+    ));
+    void cache.invalidateQueries({ queryKey: ["dashboard", ownerId] });
+  }, [cache, ownerId]);
+  const saves = usePracticeSaves(savingOwner, onSaved);
+  const saveStatus = (
+    <>
+      {saves.saving && <p className="subtle" role="status">กำลังบันทึกคำตอบในบัญชี…</p>}
+      {saves.error && (
+        <div className="notice" role="alert">
+          <p>คำตอบยังอยู่ในเบราว์เซอร์และรอบันทึกในบัญชี · {saves.error}</p>
+          <button onClick={() => void saves.retry()}>ลองบันทึกอีกครั้ง</button>
+        </div>
+      )}
+    </>
+  );
   const promptGlyph = question && meaningGlyph(question);
   const audioAvailable = useLessonAudioAvailable();
   const audioLesson = useQuery({
@@ -294,36 +317,55 @@ export function PracticeRound({
     return () => window.clearTimeout(timer);
   }, [index, round, reduce]);
   const check = async () => {
-    if (!choice || busy || result || !question || accountUnavailable) return;
-    setBusy(true);
+    if (!choice || submitting.current || result || !question || accountUnavailable) return;
+    submitting.current = true;
     setError("");
     try {
-      let r: ChoiceResult;
-      if (accountQuiz && health.data?.account_writes_enabled) {
+      let localResult: ChoiceResult | undefined;
+      if (question.feedback) {
+        const { selection_explanations, ...key } = question.feedback;
+        const correct = choice === key.correct_option_id;
+        localResult = {
+          ...key,
+          correct,
+          selection_explanation: selection_explanations[correct ? "correct" : "incorrect"],
+          persisted: false,
+        };
+      }
+      let r = localResult;
+      let submissionId: string | undefined;
+      let queued: PracticeSubmission | undefined;
+      if (savingOwner) {
         if (
-          pendingAttempt.current?.question !== question.id ||
+          pendingAttempt.current?.questionId !== question.id ||
           pendingAttempt.current.choice !== choice
         ) {
           pendingAttempt.current = {
-            question: question.id,
+            slug,
+            questionId: question.id,
             choice,
             id: crypto.randomUUID(),
           };
         }
-        r = await api<ChoiceResult>(
-          `/me/practice/${slug}/${question.id}/attempt`,
-          {
-            ownerId,
-            method: "POST",
-            body: JSON.stringify({
-              option_id: choice,
-              submission_id: pendingAttempt.current.id,
-            }),
-          },
-        );
+        const submission = pendingAttempt.current;
+        submissionId = submission.id;
+        if (localResult) {
+          try {
+            queuePracticeSubmission(savingOwner, submission);
+            queued = submission;
+          } catch {
+            // Wait for server confirmation when browser storage is unavailable.
+          }
+        }
+        if (!queued) {
+          setBusy(true);
+          r = await savePracticeSubmission(savingOwner, submission);
+          onSaved(submission.id, r);
+        }
         pendingAttempt.current = null;
-        void cache.invalidateQueries({ queryKey: ["dashboard", ownerId] });
-      } else {
+      }
+      if (!r) {
+        setBusy(true);
         r = await api<ChoiceResult>(
           `/learning/practice/${slug}/${question.id}/check`,
           {
@@ -332,12 +374,14 @@ export function PracticeRound({
           },
         );
       }
-      setResult(r);
-      setHistory((h) => [...h, { question, choice, result: r }]);
+      const attempt = { question, choice, result: r, submissionId };
+      setHistory((h) => [...h, attempt]);
+      if (queued) void saves.send(queued);
       requestAnimationFrame(() =>
         feedback.current?.focus({ preventScroll: true }),
       );
     } catch (e) {
+      submitting.current = false;
       setError((e as Error).message);
     } finally {
       setBusy(false);
@@ -347,11 +391,11 @@ export function PracticeRound({
     const next = wrongOnly
       ? history.filter((a) => !a.result.correct).map((a) => a.question)
       : questions;
+    submitting.current = false;
     setRound(next);
     setHistory([]);
     setIndex(0);
     setChoice("");
-    setResult(null);
     setReview(false);
   };
   if (!questions.length)
@@ -365,6 +409,9 @@ export function PracticeRound({
     );
   if (!question) {
     const correct = history.filter((a) => a.result.correct).length;
+    const pending = savingOwner && history.some((attempt) =>
+      attempt.submissionId && !attempt.result.persisted,
+    );
     return (
       <m.section
         className="results-panel"
@@ -390,10 +437,13 @@ export function PracticeRound({
         <p className="subtle">
           {history.every((attempt) => attempt.result.persisted)
             ? "บันทึกคำตอบในประวัติบัญชีแล้ว"
-            : history.some((attempt) => attempt.result.persisted)
-              ? "บันทึกคำตอบบางข้อในประวัติบัญชีแล้ว"
-              : "ผลรอบนี้อยู่เฉพาะหน้านี้ ไม่ได้บันทึกในบัญชี"}
+            : pending
+              ? "คำตอบที่ยังไม่ยืนยันอยู่ในคิวบันทึกของเบราว์เซอร์"
+              : history.some((attempt) => attempt.result.persisted)
+                ? "บันทึกคำตอบบางข้อในประวัติบัญชีแล้ว"
+                : "ผลรอบนี้อยู่เฉพาะหน้านี้ ไม่ได้บันทึกในบัญชี"}
         </p>
+        {saveStatus}
         <div className="hero-actions">
           {correct < history.length && (
             <button className="primary" onClick={() => retry(true)}>
@@ -573,9 +623,9 @@ export function PracticeRound({
               <button
                 className="primary"
                 onClick={() => {
-                  setIndex((i) => i + 1);
+                  submitting.current = false;
+                  setIndex(index + 1);
                   setChoice("");
-                  setResult(null);
                 }}
               >
                 {index === round.length - 1 ? "ดูผลการฝึก" : "ข้อต่อไป"}
@@ -585,7 +635,10 @@ export function PracticeRound({
           )}
         </m.section>
       </AnimatePresence>
-      <p className="session-note">เลือกได้ทีละข้อ · ไม่ต้องพิมพ์ · ฝึกครั้งนี้โดยไม่บันทึกผล</p>
+      {saveStatus}
+      <p className="session-note">
+        เลือกได้ทีละข้อ · ไม่ต้องพิมพ์ · {savingOwner ? "บันทึกคำตอบในบัญชีเบื้องหลัง" : "ฝึกครั้งนี้โดยไม่บันทึกผล"}
+      </p>
     </div>
   );
 }

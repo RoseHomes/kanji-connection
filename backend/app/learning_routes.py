@@ -37,10 +37,22 @@ def curated_comparisons(request: Request, user: OptionalUser, db: ReadSession):
 
 
 @router.get("/learning/practice/{slug}")
-def practice_questions(slug: str, request: Request, user: OptionalUser, db: ReadSession):
+def practice_questions(
+    slug: str,
+    request: Request,
+    response: Response,
+    user: OptionalUser,
+    db: ReadSession,
+    include_feedback: bool = False,
+):
     from .learning_presentation import practice, public_question
 
-    return [public_question(q) for q in practice(db, request.app.state.settings, user, slug)]
+    if include_feedback:
+        response.headers["Cache-Control"] = "private, no-store"
+    return [
+        public_question(q, include_feedback=include_feedback)
+        for q in practice(db, request.app.state.settings, user, slug)
+    ]
 
 
 @router.post("/learning/practice/{slug}/{question_id}/check")

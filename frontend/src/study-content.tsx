@@ -1,4 +1,4 @@
-import { Reading } from "./components";
+import { Reading, ReadingAudioRow } from "./components";
 import type { SourceCard } from "./types";
 import { Disclosure } from "./disclosure";
 import { AudioText, LessonAudioButton } from "./lesson-audio";
@@ -15,8 +15,9 @@ export function StudyContent({
   const example = study.example;
   const exampleBody = example && (
     <div className="study-example" data-example-role={example.role}>
-      <Reading text={example.word} reading={example.reading} audioKind="word" />
-      {example.meaning_th && <p lang="th">{example.meaning_th}</p>}
+      <ReadingAudioRow text={example.word} reading={example.reading} kind="word">
+        {example.meaning_th && <p lang="th">{example.meaning_th}</p>}
+      </ReadingAudioRow>
       <p className="reading-scope"><AudioText text={example.target_scope} /></p>
     </div>
   );

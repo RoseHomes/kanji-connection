@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, ChevronDown, GitCompareArrows } from "lucide-react";
 import { api } from "../api";
-import { ComparisonReading, DataState, EmptyState, Reading } from "../components";
+import { ComparisonReading, DataState, EmptyState, ReadingAudioRow } from "../components";
 import { AudioText } from "../lesson-audio";
 import { Chips, PageHeading, Reveal } from "../ui";
 import { ChoicePicker } from "../selection-controls";
@@ -237,13 +237,14 @@ export default function Compare() {
                           <td key={c.character}>
                             {c.example ? (
                               <>
-                                <Reading
+                                <ReadingAudioRow
                                   text={c.example.word}
                                   reading={c.example.reading}
-                                  audioKind="word"
+                                  kind="word"
                                   slug={selected.slug}
-                                />
-                                <p>{c.example.meaning_th}</p>
+                                >
+                                  <p>{c.example.meaning_th}</p>
+                                </ReadingAudioRow>
                                 {c.example.optional && (
                                   <small className="supplement-label">
                                     คำเสริม · เลือกเรียนได้

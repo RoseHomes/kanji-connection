@@ -7,6 +7,9 @@ export interface PracticeQuestion {
   prompt: string;
   kind: string;
   options: Choice[];
+  feedback?: Pick<ChoiceResult, "correct_option_id" | "correct_text" | "explanation"> & {
+    selection_explanations: { correct: string; incorrect: string };
+  };
 }
 export interface ChoiceResult {
   correct: boolean;
@@ -14,7 +17,7 @@ export interface ChoiceResult {
   correct_text: string;
   explanation: string;
   selection_explanation: string;
-  persisted: false;
+  persisted: boolean;
 }
 export interface ComparisonCharacter {
   character: string;

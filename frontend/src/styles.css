@@ -3923,6 +3923,29 @@ button.disclosure-trigger {
     transform: none;
   }
 }
+.reading-audio-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  min-inline-size: 0;
+  inline-size: 100%;
+}
+.reading-audio-copy {
+  flex: 1 1 min(100%, 6rem);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.reading-audio-row > :is(.lesson-audio-control, .audio-unavailable) {
+  margin-inline-start: auto;
+}
+.reading-audio-row > .lesson-audio-control .lesson-audio-error {
+  order: -1;
+}
+.motif-note .reading-audio-copy strong,
+.diagram-node .reading-audio-copy > :is(small, strong) {
+  display: block;
+}
 .lesson-audio-line,
 .lesson-audio-control {
   display: inline-flex;

@@ -157,15 +157,23 @@ protect the direct database boundary. The browser uses the authenticated API.
 - Lesson reading completion is self-reported and stored separately from quiz
   performance. Progress updates carry expected_version; stale updates return 409
   without overwriting.
-- Quiz GET responses omit answer keys, source provenance and grading metadata.
-  Server submissions grade against the available stored key, accept only
-  source-listed aliases, and normalize equivalent kana for reading questions. No
-  client score is accepted.
+- The multiple-choice practice quiz and lesson quick checks request answer keys and
+  explanations with the question list so the browser can show feedback immediately
+  after submission. Until then the interface hides the key, explanations, and audio
+  that would reveal a reading. The keys are visible to anyone inspecting the network
+  response or browser state in Developer Tools. Use this mode for practice only.
+  The default questions response still omits the answer keys.
 - Quiz submission UUIDs are idempotent per owner. Reusing a UUID for a different
   question or answer returns 409; retries of the same answer return the stored
   outcome.
-- Official multiple-choice answers are graded and saved when signed in with
-  account writes enabled. Guest answers and lesson quick checks are stateless.
+- For signed-in quiz users with account writes enabled, the browser queues the
+  submitted option and its UUID in owner-scoped browser storage and saves in the
+  background. The backend validates the option against the current questions and
+  grades the stored result independently. The browser uses that result once saving
+  is confirmed. Pending answers retry when the quiz opens or connectivity returns,
+  and can also be retried manually. Clearing browser data removes pending answers.
+  When browser storage is unavailable, the quiz waits for the server to confirm
+  saving before showing feedback. Guest answers and lesson quick checks are stateless.
 - Comparison answers are pending manual review. The existing non-null correct
   column holds false internally, with grade_status stored in the existing JSON
   column; pending entries are exposed as correct=null and excluded from

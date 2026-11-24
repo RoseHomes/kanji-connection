@@ -48,6 +48,15 @@ const response = (correct: boolean, second = false) => ({
   selection_explanation: "สังเกตรูปและความหมาย",
   persisted: false,
 });
+const preloaded = [{
+  ...questions[0],
+  feedback: {
+    correct_option_id: "a",
+    correct_text: "ต้นไม้",
+    explanation: "木 เป็นรูปต้นไม้",
+    selection_explanations: { correct: "สังเกตรูปได้ถูกต้อง", incorrect: "ลองดูรูปอีกครั้ง" },
+  },
+}];
 const mount = (qs = questions, variant: "quiz" | "checkpoint" = "quiz") =>
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -100,6 +109,88 @@ it("keeps a signed-in checkpoint stateless", async () => {
   expect(mocks.api.mock.calls.map(([path]) => path)).toEqual([
     "/learning/practice/chapter-02/q1/check",
   ]);
+});
+
+it("reveals preloaded feedback on submit with no guest answer request", () => {
+  mount(preloaded);
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+  expect(screen.queryByText("木 เป็นรูปต้นไม้")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  expect(screen.getByText("木 เป็นรูปต้นไม้")).toBeInTheDocument();
+  expect(mocks.api).not.toHaveBeenCalled();
+  expect(localStorage.length).toBe(0);
+});
+
+it("grades immediately, queues a failed save across reloads, and reuses its ID", async () => {
+  mocks.ownerId = "reader-a";
+  mocks.api.mockImplementation((path) => path === "/health"
+    ? Promise.resolve({ account_writes_enabled: true })
+    : Promise.reject(new Error("Offline")));
+  const submit = async () => {
+    fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+    const check = screen.getByRole("button", { name: /ตรวจคำตอบ/ });
+    await waitFor(() => expect(check).toBeEnabled());
+    fireEvent.click(check);
+    expect(screen.getByText("ถูกต้อง เชื่อมโยงได้แล้ว!")).toBeInTheDocument();
+  };
+  const first = mount(preloaded);
+  await submit();
+  await screen.findByText(/Offline/);
+  expect(localStorage.length).toBe(1);
+  fireEvent.click(screen.getByRole("button", { name: /ดูผลการฝึก/ }));
+  expect(screen.getByText(/คำตอบที่ยังไม่ยืนยันอยู่ในคิว/)).toBeInTheDocument();
+  first.unmount();
+
+  const request = mocks.api.mock.calls.at(-1);
+  mocks.api.mockImplementation((path) => path === "/health"
+    ? Promise.resolve({ account_writes_enabled: true })
+    : Promise.resolve({ ...response(true), persisted: true }));
+  mount(preloaded);
+  await waitFor(() => expect(localStorage.length).toBe(0));
+  expect(mocks.api.mock.calls.at(-1)).toEqual(request);
+});
+
+it("retries saving from feedback and uses the server grade in the round summary", async () => {
+  mocks.ownerId = "reader-a";
+  mocks.api
+    .mockResolvedValueOnce({ account_writes_enabled: true })
+    .mockRejectedValueOnce(new Error("Lost response"))
+    .mockResolvedValueOnce({ ...response(false), correct_option_id: "b", correct_text: "ป่า", persisted: true });
+  mount(preloaded);
+  fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+  const check = screen.getByRole("button", { name: /ตรวจคำตอบ/ });
+  await waitFor(() => expect(check).toBeEnabled());
+  fireEvent.click(check);
+  expect(screen.getByText("ถูกต้อง เชื่อมโยงได้แล้ว!")).toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("button", { name: /ลองบันทึกอีกครั้ง/ }));
+  await screen.findByText(/อีกนิดเดียว/);
+  expect(mocks.api.mock.calls[1]).toEqual(mocks.api.mock.calls[2]);
+  fireEvent.click(screen.getByRole("button", { name: /ดูผลการฝึก/ }));
+  expect(screen.getByText(/ตอบถูก 0 ข้อ/)).toBeInTheDocument();
+  expect(screen.getByText("บันทึกคำตอบในประวัติบัญชีแล้ว")).toBeInTheDocument();
+});
+
+it("waits for an account save when browser storage is unavailable", async () => {
+  mocks.ownerId = "reader-a";
+  const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw new Error("Storage unavailable");
+  });
+  let settle!: (result: ReturnType<typeof response>) => void;
+  mocks.api
+    .mockResolvedValueOnce({ account_writes_enabled: true })
+    .mockReturnValueOnce(new Promise((resolve) => { settle = resolve; }));
+  try {
+    mount(preloaded);
+    fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));
+    const check = screen.getByRole("button", { name: /ตรวจคำตอบ/ });
+    await waitFor(() => expect(check).toBeEnabled());
+    fireEvent.click(check);
+    expect(screen.queryByText("ถูกต้อง เชื่อมโยงได้แล้ว!")).not.toBeInTheDocument();
+    settle({ ...response(true), persisted: true });
+    await screen.findByText("ถูกต้อง เชื่อมโยงได้แล้ว!");
+  } finally {
+    setItem.mockRestore();
+  }
 });
 it("requires a radio selection, submits only an option ID and shows explicit feedback", async () => {
   mocks.api.mockResolvedValue(response(true));

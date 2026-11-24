@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useId } from "react";
 import { ArrowUpRight, Lightbulb, GitCompareArrows } from "lucide-react";
-import { KanjiCard, Reading } from "./components";
+import { AudioContentRow, KanjiCard, Reading, ReadingAudioRow } from "./components";
 import type { ComparisonItem, Kanji, LessonSection, SourceCard } from "./types";
 import { useLessonReturn, withLessonReturn } from "./lesson-return";
 import { AudioText, LessonAudioButton } from "./lesson-audio";
@@ -14,34 +14,29 @@ const titles: Record<string, string> = {
   exercises: "ถึงเวลาลองด้วยตัวเอง",
 };
 function Node({ item }: { item: ComparisonItem }) {
+  const study = item.study_reading;
+  const reading = study ? study.reading : item.reading;
+  const kind = study ? study.kind : item.kind;
   return (
-    <span className="diagram-node">
+    <div className="diagram-node">
       <span className="comparison-glyph" lang="ja">
         {item.kanji}
       </span>
       {item.kind === "component" && <small>ส่วนประกอบ</small>}
-      {item.study_reading ? (
-        <>
-          <small>{item.study_reading.label_th}</small>
-          {item.study_reading.kind === "component" ? (
-            <small className="lesson-audio-line"><span lang="ja">{item.study_reading.reading}</span>
-              <LessonAudioButton kind="component" text={item.study_reading.form} reading={item.study_reading.reading} />
-            </small>
-          ) : (
-            <Reading
-              text={item.study_reading.form}
-              reading={item.study_reading.reading}
-              audioKind={item.study_reading.kind === "word" ? "word" : "kanji"}
-            />
-          )}
-        </>
-      ) : (
-        item.reading && <small className="lesson-audio-line"><span lang="ja">{item.reading}</span>
-          <LessonAudioButton kind={item.kind === "component" ? "component" : "kanji"} text={item.kanji} reading={item.reading} />
-        </small>
-      )}
-      <strong>{item.meaning_th || item.label_th}</strong>
-    </span>
+      <AudioContentRow audio={reading && (
+        <LessonAudioButton
+          kind={kind === "component" ? "component" : kind === "word" ? "word" : "kanji"}
+          text={study?.form ?? item.kanji}
+          reading={reading}
+        />
+      )}>
+        {study && <small>{study.label_th}</small>}
+        {study && kind !== "component" ? (
+          <Reading text={study.form} reading={reading} />
+        ) : reading && <small lang="ja">{reading}</small>}
+        <strong>{item.meaning_th || item.label_th}</strong>
+      </AudioContentRow>
+    </div>
   );
 }
 export function LessonSections({
@@ -169,10 +164,10 @@ export function LessonSections({
                     <article className="comparison-pair" key={p}>
                       <div className="pair-characters">
                         {pair.map((s, n) => (
-                          <span className="pair-endpoint" key={s.kanji}>
+                          <div className="pair-endpoint" key={s.kanji}>
                             {n > 0 && <span className="pair-versus">↔</span>}
                             <Node item={s} />
-                          </span>
+                          </div>
                         ))}
                       </div>
                       <Link className="text-link" to={withLessonReturn(
@@ -241,8 +236,9 @@ export function LessonSections({
                 <div className="vocabulary-list">
                   {b.vocabulary.map((v, n) => (
                     <article className="vocabulary-item" key={n}>
-                      <Reading text={v.word} reading={v.reading} audioKind="word" />
-                      <p>{v.meaning_th}</p>
+                      <ReadingAudioRow text={v.word} reading={v.reading} kind="word">
+                        <p>{v.meaning_th}</p>
+                      </ReadingAudioRow>
                       {v.usage_notes && (
                         <details>
                           <summary>คำนี้ใช้แบบไหน?</summary>
@@ -259,8 +255,9 @@ export function LessonSections({
                   <div className="sentence-list">
                     {b.sentences.map((s, n) => (
                       <article className="sentence-card" key={n}>
-                        <Reading text={s.text} reading={s.reading} audioKind="sentence" />
-                        <p>{s.meaning_th}</p>
+                        <ReadingAudioRow text={s.text} reading={s.reading} kind="sentence">
+                          <p>{s.meaning_th}</p>
+                        </ReadingAudioRow>
                         {s.source_url && (
                           <details>
                             <summary>แหล่งเรียนรู้เพิ่มเติม</summary>
