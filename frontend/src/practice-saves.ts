@@ -72,7 +72,11 @@ export function usePracticeSaves(
       } catch {
         // The server committed the answer. Leaving the entry permits an idempotent replay.
       }
-      setStatuses(({ [key]: _saved, ...remaining }) => remaining);
+      setStatuses((current) => {
+        const remaining = { ...current };
+        delete remaining[key];
+        return remaining;
+      });
     } catch (error) {
       setStatuses((current) => ({ ...current, [key]: (error as Error).message }));
     } finally {
