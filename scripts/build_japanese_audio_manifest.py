@@ -12,12 +12,13 @@ from generate_voicevox_audio import OUTPUT, ROOT, VOICE, audio_id, hiragana, rea
 
 sys.path.insert(0, str(ROOT / "backend"))
 
+from sqlalchemy import create_engine
+
 from app.book_verify import References, parse_example
 from app.content_revision import digest
 from app.content_views import learner_block
 from app.editorial_sync import snapshot
 from app.learning_presentation import objective_questions
-from sqlalchemy import create_engine
 
 PRIVATE = ROOT / "private"
 RECEIPT = PRIVATE / "publication-release/receipt.json"
