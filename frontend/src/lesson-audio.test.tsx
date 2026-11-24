@@ -18,6 +18,8 @@ import {
   type LessonAudioKind,
 } from "./lesson-audio";
 import { LessonExperience } from "./lesson-experience";
+import { PracticeRound } from "./pages/Quiz";
+import type { PracticeQuestion } from "./presentation-types";
 import type { LessonDetail } from "./types";
 
 vi.mock("./auth", () => ({ useAuth: () => ({ session: null }) }));
@@ -44,7 +46,9 @@ vi.mock("./api", () => ({
               ],
             },
           ]
-        : [],
+        : path.includes("/lesson/")
+          ? lesson
+          : [],
   ),
 }));
 
@@ -146,7 +150,11 @@ class TestAudio {
   }
 }
 
-async function mount(stage: string, htmlFirst = false) {
+async function mount(
+  stage: string,
+  htmlFirst = false,
+  quizQuestion?: PracticeQuestion,
+) {
   vi.stubGlobal("crypto", webcrypto);
   vi.stubGlobal("Audio", TestAudio);
   vi.stubEnv("VITE_SUPABASE_URL", "https://kanjitest.supabase.co");
@@ -212,8 +220,16 @@ async function mount(stage: string, htmlFirst = false) {
         initialEntries={[`/lessons/chapter-01?mode=guided&stage=${stage}`]}
       >
         <LazyMotion features={domAnimation}>
-          <OpenCheckpoint />
-          <LessonExperience lesson={lesson} catalog={[]} />
+          {quizQuestion ? (
+            <LessonAudio enabled playbackScope="quiz">
+              <PracticeRound questions={[quizQuestion]} slug={lesson.slug} />
+            </LessonAudio>
+          ) : (
+            <>
+              <OpenCheckpoint />
+              <LessonExperience lesson={lesson} catalog={[]} />
+            </>
+          )}
         </LazyMotion>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -263,6 +279,66 @@ it("reveals word and choice sounds only after server-confirmed reading feedback"
   expect(
     await screen.findByRole("button", { name: "ฟังเสียง さん" }),
   ).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: /ดูผลการฝึก/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /ดูคำตอบทั้งรอบ/ }));
+  expect(
+    await screen.findByRole("button", { name: "ฟังเสียง さん" }),
+  ).toBeVisible();
+});
+
+const meaningQuestion: PracticeQuestion = {
+  id: "test-meaning",
+  kind: "meaning",
+  prompt: "「山」มีความหมายใดตามที่เรียนในบทนี้?",
+  options: [
+    { id: "a", text: "ภูเขา" },
+    { id: "b", text: "แม่น้ำ" },
+  ],
+};
+
+it("plays the published lesson reading before a Thai meaning answer and replays it in results", async () => {
+  await mount("quiz", false, meaningQuestion);
+  const promptAudio = await screen.findByRole("button", {
+    name: "ฟังเสียง 山 (やま)",
+  });
+  fireEvent.click(promptAudio);
+  expect(TestAudio.instances[0].url).toContain("wav-" + "a".repeat(24));
+  fireEvent.click(screen.getByRole("radio", { name: /ภูเขา/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /ดูผลการฝึก/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /ดูคำตอบทั้งรอบ/ }));
+  expect(
+    await screen.findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
+  ).toBeVisible();
+});
+
+it("withholds potentially revealing meaning and shape audio until feedback", async () => {
+  await mount("quiz", false, {
+    ...meaningQuestion,
+    options: [
+      { id: "a", text: "ภูเขา (やま)" },
+      { id: "b", text: "แม่น้ำ" },
+    ],
+  });
+  expect(screen.queryByRole("button", { name: /ฟังเสียง/ })).toBeNull();
+  fireEvent.click(screen.getByRole("radio", { name: /ภูเขา/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  expect(
+    await screen.findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
+  ).toBeVisible();
+  cleanup();
+  await mount("quiz", false, {
+    ...meaningQuestion,
+    kind: "shape",
+    prompt: "ข้อใดอธิบายจุดต่างของรูป「山 / 川」ได้ถูกต้อง?",
+  });
+  expect(screen.queryByRole("button", { name: /ฟังเสียง/ })).toBeNull();
+  fireEvent.click(screen.getByRole("radio", { name: /ภูเขา/ }));
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  expect(
+    await screen.findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
+  ).toBeVisible();
+  expect(screen.queryByRole("button", { name: /ฟังเสียง 川/ })).toBeNull();
 });
 
 it("plays a kanji, reading alternatives and phrases in Guided Learning, then reuses the URL in Full Lesson", async () => {
@@ -288,7 +364,6 @@ it("plays a kanji, reading alternatives and phrases in Guided Learning, then reu
     await within(summary).findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
   );
   expect(TestAudio.instances[1].url).toBe(first.url);
-  expect(screen.getByText("VOICEVOX:四国めたん")).toBeVisible();
 });
 
 it("cancels rapid repeated clicks, allows retry after error, and stops playback on the reading checkpoint", async () => {

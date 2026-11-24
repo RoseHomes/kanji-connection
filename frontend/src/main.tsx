@@ -25,7 +25,7 @@ import { Reveal } from "./ui";
 import Home from "./pages/Home";
 import "./styles.css";
 import { AuthProvider, useAuth } from "./auth";
-import { LessonAudio } from "./lesson-audio";
+import { JAPANESE_AUDIO_ATTRIBUTION, LessonAudio } from "./lesson-audio";
 const Catalog = lazy(() => import("./pages/Catalog"));
 const Lesson = lazy(() => import("./pages/Lesson"));
 const Explorer = lazy(() => import("./pages/Explorer"));
@@ -88,7 +88,7 @@ function App() {
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen(!menuOpen)}
         >
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          {menuOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
         <nav
           id="primary-navigation"
@@ -154,7 +154,7 @@ function App() {
           { to: "/explore", label: "สำรวจ", icon: Library },
         ].map(({ to, label, icon: Icon }) => (
           <NavLink to={to} end={to === "/"} key={to}>
-            <Icon size={21} />
+            <Icon size={17} aria-hidden="true" />
             <span>{label}</span>
           </NavLink>
         ))}
@@ -164,7 +164,10 @@ function App() {
           <Sprout size={20} /> kanji connection
         </Link>
         <span>ค่อย ๆ เรียนรู้ วันละความเชื่อมโยง</span>
-        <small>เรียนได้โดยไม่เข้าสู่ระบบ · All Rights Reserved</small>
+        <small className="footer-meta">
+          <span>เรียนได้โดยไม่เข้าสู่ระบบ · All Rights Reserved</span>
+          <span lang="ja">{JAPANESE_AUDIO_ATTRIBUTION}</span>
+        </small>
       </footer>
     </>
   );

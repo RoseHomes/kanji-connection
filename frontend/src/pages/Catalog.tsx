@@ -58,7 +58,7 @@ export default function Catalog() {
         </EmptyState>
       )}
       <div className="lesson-grid">
-        {visible.map((l, i) => (
+        {visible.map((l) => (
           <Reveal key={l.slug}>
             <Link className="lesson-card" to={`/lessons/${l.slug}`}>
               <div className="card-topline">
@@ -66,7 +66,7 @@ export default function Catalog() {
                 <ArrowUpRight size={20} />
               </div>
               <div
-                className={`chapter-glyphs tone-${(l.chapter || i) % 4}`}
+                className="chapter-glyphs"
                 lang="ja"
               >
                 {l.anchors.slice(0, 3).join(" ")}

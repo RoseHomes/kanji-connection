@@ -11,36 +11,166 @@ import {
   X,
 } from "lucide-react";
 import { api } from "../api";
-import type { Health, Lesson } from "../types";
+import type { Health, Lesson, LessonDetail } from "../types";
 import { useAuth } from "../auth";
 import type { PracticeQuestion, ChoiceResult } from "../presentation-types";
 import { DataState, EmptyState } from "../components";
 import { PageHeading } from "../ui";
 import { useReturnHref } from "../lesson-return";
-import { AudioText, LessonAudioButton, useStopAudioOnChange } from "../lesson-audio";
+import {
+  AudioText,
+  LessonAudioButton,
+  useLessonAudioAvailable,
+  useStopAudioOnChange,
+} from "../lesson-audio";
 type Attempt = {
   question: PracticeQuestion;
   choice: string;
   result: ChoiceResult;
 };
-function QuizReadingAudio({ question, result, slug, showChoices = false }: {
-  question: PracticeQuestion; result: ChoiceResult; slug: string; showChoices?: boolean;
-}) {
-  if (question.kind !== "reading") return null;
-  const form = question.prompt.match(/「([^」]+)」/)?.[1];
-  const correctReading = question.options.find((option) => option.id === result.correct_option_id)?.text;
+const singleKanji = /^\p{Script=Han}$/u;
+const japaneseScript =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+
+function meaningGlyph(question: PracticeQuestion) {
+  return question.kind === "meaning"
+    ? question.prompt.match(/^「(\p{Script=Han})」/u)?.[1]
+    : undefined;
+}
+
+function canHearMeaningPrompt(question: PracticeQuestion) {
   return (
-    <div className="quiz-reading-audio" aria-label="ฟังคำอ่านหลังตรวจคำตอบ">
+    !!meaningGlyph(question) &&
+    question.options.length > 0 &&
+    question.options.every(
+      ({ text }) =>
+        /\p{Script=Thai}/u.test(text) &&
+        !japaneseScript.test(text) &&
+        !/[a-z]/i.test(text),
+    )
+  );
+}
+
+function QuizGlyphAudio({
+  glyph,
+  lesson,
+  onlyCharacter = false,
+  showText = false,
+}: {
+  glyph: string;
+  lesson: LessonDetail | undefined;
+  onlyCharacter?: boolean;
+  showText?: boolean;
+}) {
+  if (!lesson || lesson.status !== "published" || lesson.private_development)
+    return null;
+  const lessonCards = lesson.sections?.flatMap((section) =>
+    section.blocks.flatMap((block) => block.cards || []),
+  );
+  const reading = lessonCards?.find((card) => card.character === glyph)?.study
+    ?.reading;
+  if (!reading) return null;
+  // After grading, a taught inflected form can play as a separately labelled word.
+  if (
+    !onlyCharacter &&
+    reading.kind === "word" &&
+    reading.form.includes(glyph)
+  ) {
+    return (
+      <LessonAudioButton
+        kind="word"
+        text={reading.form}
+        reading={reading.reading}
+        slug={lesson.slug}
+        quiz
+        hideUnavailable
+        showText
+      />
+    );
+  }
+  if (
+    reading.form !== glyph ||
+    (reading.kind !== "character" &&
+      (onlyCharacter || reading.kind !== "component"))
+  )
+    return null;
+  return (
+    <LessonAudioButton
+      kind={reading.kind === "component" ? "component" : "kanji"}
+      text={glyph}
+      reading={reading.reading}
+      slug={lesson.slug}
+      quiz
+      hideUnavailable
+      showText={showText}
+    />
+  );
+}
+
+function QuizAnswerAudio({
+  question,
+  result,
+  slug,
+  lesson,
+  includeMeaning = false,
+}: {
+  question: PracticeQuestion;
+  result: ChoiceResult;
+  slug: string;
+  lesson?: LessonDetail;
+  includeMeaning?: boolean;
+}) {
+  if (question.kind !== "reading") {
+    const glyphs =
+      question.kind === "glyph"
+        ? question.options.map(({ text }) => text)
+        : question.kind === "shape"
+          ? (question.prompt.match(/「([^」]+)」/)?.[1] || "").split(
+              /\s*\/\s*/u,
+            )
+          : includeMeaning
+            ? [meaningGlyph(question) || ""]
+            : [];
+    const forms = [
+      ...new Set(glyphs.filter((glyph) => singleKanji.test(glyph))),
+    ];
+    if (!forms.length) return null;
+    return (
+      <div className="quiz-answer-audio" aria-label="ฟังคำอ่านหลังตรวจคำตอบ">
+        {forms.map((glyph) => (
+          <QuizGlyphAudio key={glyph} glyph={glyph} lesson={lesson} showText />
+        ))}
+      </div>
+    );
+  }
+  const form = question.prompt.match(/「([^」]+)」/)?.[1];
+  const correctReading = question.options.find(
+    (option) => option.id === result.correct_option_id,
+  )?.text;
+  return (
+    <div className="quiz-answer-audio" aria-label="ฟังคำอ่านหลังตรวจคำตอบ">
       {form && correctReading && (
         <span className="lesson-audio-line">
           <span lang="ja">{form}</span>
-          <LessonAudioButton kind="word" text={form} reading={correctReading} slug={slug} quiz />
+          <LessonAudioButton
+            kind="word"
+            text={form}
+            reading={correctReading}
+            slug={slug}
+            quiz
+          />
         </span>
       )}
-      {showChoices && question.options.map(({ id, text }) => (
+      {question.options.map(({ id, text }) => (
         <span className="lesson-audio-line" key={id}>
           <span lang="ja">{text}</span>
-          <LessonAudioButton kind="quiz_choice" text={text} reading={text} slug={slug} quiz />
+          <LessonAudioButton
+            kind="quiz_choice"
+            text={text}
+            reading={text}
+            slug={slug}
+            quiz
+          />
         </span>
       ))}
     </div>
@@ -85,7 +215,7 @@ export default function Quiz() {
               <p className="eyebrow">
                 ฝึกบทที่ {String(l.chapter).padStart(2, "0")}
               </p>
-              <div className="chapter-glyphs tone-2" lang="ja">
+              <div className="chapter-glyphs" lang="ja">
                 {l.anchors.slice(0, 3).join(" ")}
               </div>
               <h2>{l.title_th}</h2>
@@ -147,6 +277,14 @@ export function PracticeRound({
   const feedback = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const question = round[index];
+  const promptGlyph = question && meaningGlyph(question);
+  const audioAvailable = useLessonAudioAvailable();
+  const audioLesson = useQuery({
+    queryKey: ["lesson", slug],
+    queryFn: () => api<LessonDetail>(`/learning/lesson/${slug}`),
+    enabled: audioAvailable && questions.some(({ kind }) => kind === "meaning" || kind === "glyph" || kind === "shape"),
+    retry: false,
+  });
   useStopAudioOnChange(`${slug}:${question?.id || "results"}:${review}`);
   useEffect(() => {
     const timer = window.setTimeout(
@@ -287,7 +425,7 @@ export function PracticeRound({
                 </strong>
                 <p>คำตอบที่ตรงกับโจทย์: <AudioText text={a.result.correct_text} slug={slug} quiz /></p>
                 <p><AudioText text={a.result.explanation} slug={slug} quiz /></p>
-                <QuizReadingAudio question={a.question} result={a.result} slug={slug} />
+                <QuizAnswerAudio question={a.question} result={a.result} slug={slug} lesson={audioLesson.data} includeMeaning />
               </li>
             ))}
           </ol>
@@ -344,9 +482,12 @@ export function PracticeRound({
               shape: "สังเกตความต่าง",
             }[question.kind] || "ลองเลือกคำตอบ"}
           </span>
-          <h2 ref={heading} tabIndex={-1}>
-            {question.prompt}
-          </h2>
+          <div className="quiz-prompt">
+            <h2 ref={heading} tabIndex={-1}>{question.prompt}</h2>
+            {promptGlyph && (result || canHearMeaningPrompt(question)) && (
+              <QuizGlyphAudio glyph={promptGlyph} lesson={audioLesson.data} onlyCharacter={!result} />
+            )}
+          </div>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -398,7 +539,9 @@ export function PracticeRound({
               </button>
             )}
           </form>
-          {result && <QuizReadingAudio question={question} result={result} slug={slug} showChoices />}
+          {result && audioAvailable && (
+            <QuizAnswerAudio question={question} result={result} slug={slug} lesson={audioLesson.data} />
+          )}
           {error && (
             <p role="alert" className="notice">
               {error}

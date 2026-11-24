@@ -156,9 +156,9 @@ export default function Home() {
               text: "เลือกคำตอบ ดูเหตุผล แล้วลองทบทวน",
             },
           ].map(({ icon: Icon, title, text }, i) => (
-            <article className={`method-tile tone-${i}`} key={title}>
+            <article className="method-tile" key={title}>
               <span className="step-number">0{i + 1}</span>
-              <Icon size={26} />
+              <Icon size={21} aria-hidden="true" />
               <h3>{title}</h3>
               <p>{text}</p>
             </article>
@@ -190,7 +190,7 @@ export default function Home() {
           </EmptyState>
         )}
         <div className="lesson-grid">
-          {lessons.data?.slice(0, 3).map((l, i) => (
+          {lessons.data?.slice(0, 3).map((l) => (
             <Link
               className="lesson-card"
               to={`/lessons/${l.slug}`}
@@ -200,7 +200,7 @@ export default function Home() {
                 <span>LESSON {String(l.chapter).padStart(2, "0")}</span>
                 <ArrowUpRight size={20} />
               </div>
-              <div className={`chapter-glyphs tone-${i}`} lang="ja">
+              <div className="chapter-glyphs" lang="ja">
                 {l.anchors.slice(0, 3).join(" ")}
               </div>
               <h3>{l.title_th}</h3>

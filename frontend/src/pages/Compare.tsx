@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, GitCompareArrows } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronDown, GitCompareArrows } from "lucide-react";
 import { api } from "../api";
 import { ComparisonReading, DataState, EmptyState, Reading } from "../components";
 import { AudioText } from "../lesson-audio";
@@ -17,6 +17,7 @@ export default function Compare() {
   const [params, setParams] = useSearchParams();
   const [category, setCategory] = useState("all");
   const [partner, setPartner] = useState(1);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const [mobile, setMobile] = useState(
     () => window.matchMedia("(max-width: 700px)").matches,
   );
@@ -42,22 +43,24 @@ export default function Compare() {
         params.get("characters"),
     ) ||
     filtered[0];
-  const pick = (id: string) => {
+  const pick = (id: string, fromDirectory = false) => {
     const next = new URLSearchParams(params);
     next.set("group", id);
     next.delete("characters");
     setParams(next, { replace: true, preventScrollReset: true });
     setPartner(1);
+    setDirectoryOpen(false);
     if (mobile)
-      requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (fromDirectory) document.querySelector<HTMLElement>(".comparison-heading h2")?.focus({ preventScroll: true });
         document.querySelector(".comparison-workspace")?.scrollIntoView({
           block: "start",
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
             .matches
             ? "auto"
             : "smooth",
-        }),
-      );
+        });
+      });
   };
   const columns = selected
     ? mobile && selected.characters.length > 2
@@ -133,7 +136,12 @@ export default function Compare() {
                 }))}
                 onChange={pick}
               />
-              <div className="group-buttons" role="group" aria-label="ชุดคันจิ">
+              <button type="button" className="group-directory-toggle" aria-expanded={directoryOpen}
+                aria-controls="comparison-group-list" onClick={() => setDirectoryOpen((open) => !open)}>
+                {directoryOpen ? "ซ่อนรายการชุด" : "ดูรายการชุดทั้งหมด"}
+                <ChevronDown size={15} aria-hidden="true" />
+              </button>
+              <div id="comparison-group-list" className="group-buttons" role="group" aria-label="ชุดคันจิ">
                 {filtered.map((g) => (
                   <button
                     key={g.id}
@@ -143,7 +151,7 @@ export default function Compare() {
                         ? "group-pick selected"
                         : "group-pick"
                     }
-                    onClick={() => pick(g.id)}
+                    onClick={() => pick(g.id, true)}
                   >
                     <span lang="ja">{g.title}</span>
                     <small>
@@ -161,7 +169,7 @@ export default function Compare() {
                   </span>
                   <div>
                     <p className="eyebrow">มองรูปเดียวกันให้ต่างออกไป</p>
-                    <h2 lang="ja">{selected.title}</h2>
+                    <h2 lang="ja" tabIndex={-1}>{selected.title}</h2>
                     <p className="sr-only" role="status" aria-live="polite">
                       กำลังแสดงตาราง {selected.title}
                     </p>

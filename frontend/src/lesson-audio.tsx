@@ -14,7 +14,7 @@ import {
 
 export type LessonAudioKind =
   "kanji" | "component" | "word" | "sentence" | "term" | "quiz_choice";
-const attribution = "VOICEVOX:四国めたん";
+export const JAPANESE_AUDIO_ATTRIBUTION = "VOICEVOX:四国めたん";
 const bucket = "kanji-japanese-audio";
 const indexPath = "/assets/japanese-audio-index.json";
 const timeoutMs = 12_000;
@@ -39,7 +39,7 @@ async function getIndex() {
   if (
     index.version !== 2 ||
     index.bucket !== bucket ||
-    index.attribution !== attribution ||
+    index.attribution !== JAPANESE_AUDIO_ATTRIBUTION ||
     !index.shared || !index.lessons || !index.files
   )
     throw new Error("Invalid Japanese audio index");
@@ -84,6 +84,10 @@ interface AudioContextValue {
   stop: () => void;
 }
 const LessonAudioContext = createContext<AudioContextValue | null>(null);
+
+export function useLessonAudioAvailable() {
+  return useContext(LessonAudioContext) !== null;
+}
 
 export function LessonAudio({
   slug,
@@ -180,14 +184,13 @@ export function LessonAudio({
   return (
     <LessonAudioContext.Provider value={value}>
       {children}
-      {value && <small className="lesson-audio-credit">{attribution}</small>}
       {active && index.isError && (
-        <small className="lesson-audio-credit">
+        <div className="lesson-audio-notice">
           เสียงภาษาญี่ปุ่นยังโหลดไม่ได้{" "}
           <button type="button" onClick={() => void index.refetch()}>
             ลองใหม่
           </button>
-        </small>
+        </div>
       )}
     </LessonAudioContext.Provider>
   );
@@ -200,6 +203,8 @@ export function LessonAudioButton({
   slug,
   quiz = false,
   fallbackKind,
+  hideUnavailable = false,
+  showText = false,
 }: {
   kind: LessonAudioKind;
   text: string;
@@ -207,6 +212,8 @@ export function LessonAudioButton({
   slug?: string;
   quiz?: boolean;
   fallbackKind?: LessonAudioKind;
+  hideUnavailable?: boolean;
+  showText?: boolean;
 }) {
   const context = useContext(LessonAudioContext);
   const control = useId();
@@ -248,7 +255,7 @@ export function LessonAudioButton({
     !path ||
     !/^ja\/metan-normal\/wav-[a-f0-9]{24}\/[a-f0-9]{64}\.mp3$/.test(path)
   ) {
-    return kind === "term" || kind === "quiz_choice" ? null : (
+    return hideUnavailable || kind === "term" || kind === "quiz_choice" ? null : (
       <small className="audio-unavailable">ยังไม่มีเสียง</small>
     );
   }
@@ -257,9 +264,11 @@ export function LessonAudioButton({
   const label = !reading || text === reading ? text : `${text} (${reading})`;
   return (
     <span className="lesson-audio-control">
+      {showText && <span lang="ja">{text}</span>}
       <button
         type="button"
         className="lesson-audio-button"
+        data-active={busy || undefined}
         aria-label={`${busy ? "หยุดเสียง" : state === "error" ? "ลองฟังอีกครั้ง" : "ฟังเสียง"} ${label}`}
         onClick={() =>
           context.toggle(
@@ -269,9 +278,9 @@ export function LessonAudioButton({
         }
       >
         {busy ? (
-          <Square size={15} aria-hidden="true" />
+          <Square size={13} aria-hidden="true" />
         ) : (
-          <Volume2 size={17} aria-hidden="true" />
+          <Volume2 size={14} aria-hidden="true" />
         )}
       </button>
       <span

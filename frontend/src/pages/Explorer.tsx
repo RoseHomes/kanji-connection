@@ -121,9 +121,9 @@ export default function Explorer() {
         {data?.length || 0} ตัวอักษรที่แสดง · เลือกเปิดดูคำศัพท์และภาพช่วยจำ
       </p>
       <div className="explorer-grid">
-        {data?.map((k, i) => (
+        {data?.map((k) => (
           <article
-            className={`explorer-tile tone-${i % 4}`}
+            className="explorer-tile"
             key={k.character}
           >
             <Link className="explorer-tile-link" to={`/explore/${encodeURIComponent(k.character)}`}>

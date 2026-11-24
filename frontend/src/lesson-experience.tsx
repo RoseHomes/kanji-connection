@@ -436,21 +436,6 @@ export function LessonExperience({
             ]}
             onChange={onMode}
           />
-          {mode === "guided" && stage.id === "discover" && (
-            <button
-              className="primary entry-start"
-              onClick={() =>
-                go(
-                  [...visited].reverse().find((id) => id !== "discover") ||
-                    stages[1]?.id ||
-                    "review",
-                )
-              }
-            >
-              <Play size={17} />
-              {visited.length > 1 ? "เรียนต่อ" : "เริ่มเรียน"}
-            </button>
-          )}
           <Link className="text-link" to={quizHref}>
             ไปแบบฝึกหัดได้ทันที
             <ArrowRight size={16} />
@@ -617,8 +602,8 @@ export function LessonExperience({
                           lang="ja"
                           aria-hidden="true"
                         >
-                          {lesson.anchors.slice(0, 4).map((c, i) => (
-                            <span className={`tone-${i % 4}`} key={c}>
+                          {lesson.anchors.slice(0, 4).map((c) => (
+                            <span key={c}>
                               {c}
                             </span>
                           ))}
@@ -642,7 +627,7 @@ export function LessonExperience({
                         <p className="session-caption">
                           ตำแหน่งเรียนจำไว้เฉพาะแท็บนี้ · เริ่มฝึกได้โดยไม่ต้องเรียนครบทุกช่วง
                         </p>
-                        <div className="hero-actions">
+                        <div className="hero-actions discovery-actions">
                           <button
                             className="primary"
                             onClick={() =>
@@ -655,10 +640,10 @@ export function LessonExperience({
                               )
                             }
                           >
-                            <Play size={18} />
+                            <Play size={16} aria-hidden="true" />
                             {visited.some((id) => id !== "discover")
-                              ? "เรียนต่อทีละกลุ่ม"
-                              : "เริ่มเรียนทีละกลุ่ม"}
+                              ? "เรียนต่อ"
+                              : "เริ่มเรียน"}
                           </button>
                           <button onClick={() => go(stage.id, "full")}>
                             เปิดบทเรียนฉบับเต็ม
