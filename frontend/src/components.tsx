@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 import type { Kanji } from "./types";
 import { StudyContent } from "./study-content";
 import { useLessonReturn, withLessonReturn } from "./lesson-return";
+import {
+  KanjiAudioReadings,
+  LessonAudioButton,
+  type LessonAudioKind,
+} from "./lesson-audio";
 export function DataState({
   loading,
   error,
@@ -47,8 +52,12 @@ export function KanjiVisual({
     </div>
   );
 }
-export function Reading({ text, reading }: { text: string; reading?: string }) {
-  return reading ? (
+export function Reading({ text, reading, audioKind }: {
+  text: string;
+  reading?: string;
+  audioKind?: LessonAudioKind;
+}) {
+  const label = reading ? (
     <ruby lang="ja">
       {text}
       <rp>（</rp>
@@ -57,6 +66,14 @@ export function Reading({ text, reading }: { text: string; reading?: string }) {
     </ruby>
   ) : (
     <span lang="ja">{text}</span>
+  );
+  return audioKind ? (
+    <span className="lesson-audio-line">
+      {label}
+      <LessonAudioButton kind={audioKind} text={text} reading={reading} />
+    </span>
+  ) : (
+    label
   );
 }
 export function ReadOnlyNotice() {
@@ -151,6 +168,14 @@ export function KanjiCard({
       )}
       <p>{item.note_th}</p>
       {source?.study && <StudyContent card={source} focused={focused} />}
+      <KanjiAudioReadings
+        character={item.character}
+        onyomi={item.onyomi}
+        kunyomi={item.kunyomi}
+        primary={source?.study?.reading.kind === "character"
+          ? source.study.reading.reading
+          : undefined}
+      />
       {source && !source.study && (
         <div className="card-example">
           <small>ตัวอย่างคำที่ใช้ตัวอักษรนี้</small>

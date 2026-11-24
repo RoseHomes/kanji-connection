@@ -240,7 +240,7 @@ export function LessonSections({
                 <div className="vocabulary-list">
                   {b.vocabulary.map((v, n) => (
                     <article className="vocabulary-item" key={n}>
-                      <Reading text={v.word} reading={v.reading} />
+                      <Reading text={v.word} reading={v.reading} audioKind="word" />
                       <p>{v.meaning_th}</p>
                       {v.usage_notes && (
                         <details>
@@ -258,7 +258,7 @@ export function LessonSections({
                   <div className="sentence-list">
                     {b.sentences.map((s, n) => (
                       <article className="sentence-card" key={n}>
-                        <Reading text={s.text} reading={s.reading} />
+                        <Reading text={s.text} reading={s.reading} audioKind="sentence" />
                         <p>{s.meaning_th}</p>
                         {s.source_url && (
                           <details>

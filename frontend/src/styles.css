@@ -3714,6 +3714,38 @@ button.disclosure-trigger {
     transform: none;
   }
 }
+.lesson-audio-line,
+.lesson-audio-control {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+.lesson-audio-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+  box-shadow: none;
+  color: var(--green);
+}
+.lesson-audio-error {
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+.lesson-audio-credit {
+  display: block;
+  margin: 16px 0;
+  color: var(--muted);
+}
+.kanji-audio-readings {
+  margin-block: 8px;
+}
+.kanji-audio-readings dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+}
 @media (prefers-reduced-motion: reduce) {
   .picker-content {
     animation: none;

@@ -1,6 +1,7 @@
 import { Reading } from "./components";
 import type { SourceCard } from "./types";
 import { Disclosure } from "./disclosure";
+import { LessonAudioButton } from "./lesson-audio";
 
 export function StudyContent({
   card,
@@ -14,7 +15,7 @@ export function StudyContent({
   const example = study.example;
   const exampleBody = example && (
     <div className="study-example" data-example-role={example.role}>
-      <Reading text={example.word} reading={example.reading} />
+      <Reading text={example.word} reading={example.reading} audioKind="word" />
       {example.meaning_th && <p lang="th">{example.meaning_th}</p>}
       <p className="reading-scope">{example.target_scope}</p>
     </div>
@@ -24,9 +25,20 @@ export function StudyContent({
       <div className="study-reading" data-reading-kind={study.reading.kind}>
         <small>{study.reading.label_th}</small>
         {study.reading.kind === "component" ? (
-          <p lang="ja">{study.reading.reading}</p>
+          <p className="lesson-audio-line">
+            <span lang="ja">{study.reading.reading}</span>
+            <LessonAudioButton
+              kind="component"
+              text={study.reading.form}
+              reading={study.reading.reading}
+            />
+          </p>
         ) : (
-          <Reading text={study.reading.form} reading={study.reading.reading} />
+          <Reading
+            text={study.reading.form}
+            reading={study.reading.reading}
+            audioKind={study.reading.kind === "word" ? "word" : "kanji"}
+          />
         )}
         {!focused && <p className="reading-scope">{study.reading.note_th}</p>}
       </div>

@@ -37,6 +37,7 @@ import { Disclosure } from "./disclosure";
 import { LessonReturnContext, withLessonReturn } from "./lesson-return";
 import { PracticeRound } from "./pages/Quiz";
 import { LessonSaveProgress } from "./lesson-save-progress";
+import { LessonAudio, LessonAudioButton } from "./lesson-audio";
 
 function QuickCheck({ slug, active }: { slug: string; active: boolean }) {
   const q = useQuery({
@@ -119,11 +120,19 @@ function FullStage({
                     {c.study?.role === "supplementary" && " · เลือกเรียนได้"}
                   </small>
                   {c.study?.reading.kind === "component" ? (
-                    <span lang="ja">{c.study.reading.reading}</span>
+                    <span className="lesson-audio-line">
+                      <span lang="ja">{c.study.reading.reading}</span>
+                      <LessonAudioButton
+                        kind="component"
+                        text={c.study.reading.form}
+                        reading={c.study.reading.reading}
+                      />
+                    </span>
                   ) : (
                     <Reading
                       text={c.study?.reading.form || c.character}
                       reading={c.study?.reading.reading || c.reading_example}
+                      audioKind={c.study?.reading.kind === "word" ? "word" : "kanji"}
                     />
                   )}
                 </div>
@@ -388,7 +397,7 @@ export function LessonExperience({
     );
   };
   const quizHref = withLessonReturn(`/quiz/${lesson.slug}`, returnTo);
-  return (
+  const content = (
     <LessonReturnContext.Provider value={returnTo}>
       <div className={`hybrid-lesson mode-${mode}`}>
         <div className="hybrid-title">
@@ -906,5 +915,18 @@ export function LessonExperience({
         </nav>
       </div>
     </LessonReturnContext.Provider>
+  );
+  return (
+    <LessonAudio
+      slug={lesson.slug}
+      enabled={
+        lesson.status === "published" &&
+        !lesson.private_development &&
+        !(mode === "guided" && stage.phase === "check")
+      }
+      playbackScope={`${mode}:${stage.id}:${cardIndex}`}
+    >
+      {content}
+    </LessonAudio>
   );
 }
