@@ -85,6 +85,8 @@ def db_client(db_engine):
             session.add(vocab)
             session.flush()
             session.add(VocabularyKanji(vocabulary_id=vocab.id, position=0, kanji_id=wood.id))
+            if state == "sample":
+                session.add(VocabularyKanji(vocabulary_id=vocab.id, position=1, kanji_id=wood.id))
     with TestClient(
         create_app(
             Settings(_env_file=None, content_source="database", expose_samples=True),

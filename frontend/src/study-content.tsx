@@ -1,7 +1,7 @@
 import { Reading } from "./components";
 import type { SourceCard } from "./types";
 import { Disclosure } from "./disclosure";
-import { LessonAudioButton } from "./lesson-audio";
+import { AudioText, LessonAudioButton } from "./lesson-audio";
 
 export function StudyContent({
   card,
@@ -17,7 +17,7 @@ export function StudyContent({
     <div className="study-example" data-example-role={example.role}>
       <Reading text={example.word} reading={example.reading} audioKind="word" />
       {example.meaning_th && <p lang="th">{example.meaning_th}</p>}
-      <p className="reading-scope">{example.target_scope}</p>
+      <p className="reading-scope"><AudioText text={example.target_scope} /></p>
     </div>
   );
   return (
@@ -40,7 +40,7 @@ export function StudyContent({
             audioKind={study.reading.kind === "word" ? "word" : "kanji"}
           />
         )}
-        {!focused && <p className="reading-scope">{study.reading.note_th}</p>}
+        {!focused && <p className="reading-scope"><AudioText text={study.reading.note_th} /></p>}
       </div>
       {example?.optional ? (
         <details className="optional-example">
@@ -62,18 +62,18 @@ export function StudyContent({
         </div>
       ) : null}
       {!focused && study.scope_note_th && study.role !== "supplementary" && (
-        <p className="scope-note">{study.scope_note_th}</p>
+        <p className="scope-note"><AudioText text={study.scope_note_th} /></p>
       )}
       <div className="mnemonic-cue">
         <strong>มองรูปแล้วเชื่อมความหมาย</strong>
-        <p>{card.memory_note}</p>
+        <p><AudioText text={card.memory_note} /></p>
         {!focused && <small>{study.mnemonic_note_th}</small>}
       </div>
       {focused && (
         <Disclosure label="รายละเอียดคำอ่านและภาพจำ">
-          <p>{study.reading.note_th}</p>
+          <p><AudioText text={study.reading.note_th} /></p>
           {study.scope_note_th && study.role !== "supplementary" && (
-            <p>{study.scope_note_th}</p>
+            <p><AudioText text={study.scope_note_th} /></p>
           )}
           <p>{study.mnemonic_note_th}</p>
         </Disclosure>

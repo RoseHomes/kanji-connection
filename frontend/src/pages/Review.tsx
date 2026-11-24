@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import type { Health } from "../types";
 import { useAuth } from "../auth";
 import type { CloudReview } from "../learning-types";
+import { KanjiReadingList, useStopAudioOnChange } from "../lesson-audio";
 interface Card {
   character: string;
   meaning_th: string;
@@ -63,6 +64,7 @@ function PersonalReview() {
     }) || [];
   const chars = queue ?? due.map((k) => k.character);
   const card = data?.find((k) => k.character === chars[0]);
+  useStopAudioOnChange(`${card?.character}:${revealed}`);
   async function answer(knew: boolean) {
     if (!card || busy || readOnly) return;
     setBusy(true);
@@ -128,19 +130,26 @@ function PersonalReview() {
             disabled={busy}
             onClick={() => setRevealed((v) => !v)}
             aria-label={revealed ? "ซ่อนคำตอบ" : "เปิดคำตอบ"}
+            aria-expanded={revealed}
           >
             <span lang="ja">{card.character}</span>
             {revealed ? (
               <div>
                 <h2>{card.meaning_th}</h2>
-                <p lang="ja">
+                {card.private_development && <p lang="ja">
                   {card.kunyomi.join("・")} / {card.onyomi.join("・")}
-                </p>
+                </p>}
               </div>
             ) : (
               <p>แตะเพื่อเปิดคำตอบ</p>
             )}
           </button>
+          {revealed && !card.private_development && (
+            <dl className="review-audio-readings">
+              <dt>คุนโยมิ</dt><dd><KanjiReadingList character={card.character} readings={card.kunyomi} /></dd>
+              <dt>อนโยมิ</dt><dd><KanjiReadingList character={card.character} readings={card.onyomi} /></dd>
+            </dl>
+          )}
           {revealed && (
             <div className="review-actions">
               <button

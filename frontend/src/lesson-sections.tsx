@@ -4,6 +4,7 @@ import { ArrowUpRight, Lightbulb, GitCompareArrows } from "lucide-react";
 import { KanjiCard, Reading } from "./components";
 import type { ComparisonItem, Kanji, LessonSection, SourceCard } from "./types";
 import { useLessonReturn, withLessonReturn } from "./lesson-return";
+import { AudioText, LessonAudioButton } from "./lesson-audio";
 const titles: Record<string, string> = {
   introduction: "สิ่งที่ควรสังเกต",
   cards: "ทำความรู้จักตัวอักษร",
@@ -23,16 +24,21 @@ function Node({ item }: { item: ComparisonItem }) {
         <>
           <small>{item.study_reading.label_th}</small>
           {item.study_reading.kind === "component" ? (
-            <small lang="ja">{item.study_reading.reading}</small>
+            <small className="lesson-audio-line"><span lang="ja">{item.study_reading.reading}</span>
+              <LessonAudioButton kind="component" text={item.study_reading.form} reading={item.study_reading.reading} />
+            </small>
           ) : (
             <Reading
               text={item.study_reading.form}
               reading={item.study_reading.reading}
+              audioKind={item.study_reading.kind === "word" ? "word" : "kanji"}
             />
           )}
         </>
       ) : (
-        item.reading && <small lang="ja">{item.reading}</small>
+        item.reading && <small className="lesson-audio-line"><span lang="ja">{item.reading}</span>
+          <LessonAudioButton kind={item.kind === "component" ? "component" : "kanji"} text={item.kanji} reading={item.reading} />
+        </small>
       )}
       <strong>{item.meaning_th || item.label_th}</strong>
     </span>
@@ -120,9 +126,9 @@ export function LessonSections({
           </div>
           {section.blocks.map((b, j) => (
             <div key={j}>
-              {b.text && <p>{b.text}</p>}
+              {b.text && <p><AudioText text={b.text} /></p>}
               {b.instructions_th && (
-                <p className="learner-instructions">{b.instructions_th}</p>
+                <p className="learner-instructions"><AudioText text={b.instructions_th} /></p>
               )}
               {section.kind === "introduction" && (
                 <div className="orientation">
@@ -160,14 +166,7 @@ export function LessonSections({
               {b.pairs && (
                 <div className="pair-grid">
                   {b.pairs.map((pair, p) => (
-                    <Link
-                      className="comparison-pair"
-                      key={p}
-                      to={withLessonReturn(
-                        `/compare?characters=${encodeURIComponent(pair.map((s) => s.kanji).join(","))}`,
-                        returnTo,
-                      )}
-                    >
+                    <article className="comparison-pair" key={p}>
                       <div className="pair-characters">
                         {pair.map((s, n) => (
                           <span className="pair-endpoint" key={s.kanji}>
@@ -176,11 +175,13 @@ export function LessonSections({
                           </span>
                         ))}
                       </div>
-                      <span className="text-link">
+                      <Link className="text-link" to={withLessonReturn(
+                        `/compare?characters=${encodeURIComponent(pair.map((s) => s.kanji).join(","))}`, returnTo,
+                      )}>
                         เปิดตารางเปรียบเทียบ
                         <ArrowUpRight size={15} />
-                      </span>
-                    </Link>
+                      </Link>
+                    </article>
                   ))}
                 </div>
               )}
@@ -193,7 +194,7 @@ export function LessonSections({
                     <h3>จุดสังเกตที่ลองนำไปใช้ได้</h3>
                     <ul className="memory-tips">
                       {b.memory_tips.map((t, n) => (
-                        <li key={n}>{t}</li>
+                        <li key={n}><AudioText text={t} /></li>
                       ))}
                     </ul>
                   </div>
@@ -245,7 +246,7 @@ export function LessonSections({
                       {v.usage_notes && (
                         <details>
                           <summary>คำนี้ใช้แบบไหน?</summary>
-                          <p className="reading-scope">{v.usage_notes}</p>
+                          <p className="reading-scope"><AudioText text={v.usage_notes} /></p>
                         </details>
                       )}
                     </article>

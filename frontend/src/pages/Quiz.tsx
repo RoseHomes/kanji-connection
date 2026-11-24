@@ -17,11 +17,35 @@ import type { PracticeQuestion, ChoiceResult } from "../presentation-types";
 import { DataState, EmptyState } from "../components";
 import { PageHeading } from "../ui";
 import { useReturnHref } from "../lesson-return";
+import { AudioText, LessonAudioButton, useStopAudioOnChange } from "../lesson-audio";
 type Attempt = {
   question: PracticeQuestion;
   choice: string;
   result: ChoiceResult;
 };
+function QuizReadingAudio({ question, result, slug, showChoices = false }: {
+  question: PracticeQuestion; result: ChoiceResult; slug: string; showChoices?: boolean;
+}) {
+  if (question.kind !== "reading") return null;
+  const form = question.prompt.match(/「([^」]+)」/)?.[1];
+  const correctReading = question.options.find((option) => option.id === result.correct_option_id)?.text;
+  return (
+    <div className="quiz-reading-audio" aria-label="ฟังคำอ่านหลังตรวจคำตอบ">
+      {form && correctReading && (
+        <span className="lesson-audio-line">
+          <span lang="ja">{form}</span>
+          <LessonAudioButton kind="word" text={form} reading={correctReading} slug={slug} quiz />
+        </span>
+      )}
+      {showChoices && question.options.map(({ id, text }) => (
+        <span className="lesson-audio-line" key={id}>
+          <span lang="ja">{text}</span>
+          <LessonAudioButton kind="quiz_choice" text={text} reading={text} slug={slug} quiz />
+        </span>
+      ))}
+    </div>
+  );
+}
 export default function Quiz() {
   const { slug } = useParams();
   const catalog = useQuery({
@@ -123,6 +147,7 @@ export function PracticeRound({
   const feedback = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const question = round[index];
+  useStopAudioOnChange(`${slug}:${question?.id || "results"}:${review}`);
   useEffect(() => {
     const timer = window.setTimeout(
       () => heading.current?.focus({ preventScroll: true }),
@@ -258,10 +283,11 @@ export function PracticeRound({
                   ) : (
                     <RotateCcw size={18} />
                   )}{" "}
-                  ข้อ {i + 1}: {a.question.prompt}
+                  ข้อ {i + 1}: <AudioText text={a.question.prompt} slug={slug} quiz />
                 </strong>
-                <p>คำตอบที่ตรงกับโจทย์: {a.result.correct_text}</p>
-                <p>{a.result.explanation}</p>
+                <p>คำตอบที่ตรงกับโจทย์: <AudioText text={a.result.correct_text} slug={slug} quiz /></p>
+                <p><AudioText text={a.result.explanation} slug={slug} quiz /></p>
+                <QuizReadingAudio question={a.question} result={a.result} slug={slug} />
               </li>
             ))}
           </ol>
@@ -372,6 +398,7 @@ export function PracticeRound({
               </button>
             )}
           </form>
+          {result && <QuizReadingAudio question={question} result={result} slug={slug} showChoices />}
           {error && (
             <p role="alert" className="notice">
               {error}
@@ -393,10 +420,10 @@ export function PracticeRound({
                   ? "ถูกต้อง เชื่อมโยงได้แล้ว!"
                   : "อีกนิดเดียว มาดูจุดสังเกตกัน"}
               </h3>
-              <p>{result.explanation}</p>
+              <p><AudioText text={result.explanation} slug={slug} quiz /></p>
               {!result.correct && (
                 <p>
-                  {result.selection_explanation} · คำตอบที่ตรงกับโจทย์:{" "}
+                  <AudioText text={result.selection_explanation} slug={slug} quiz /> · คำตอบที่ตรงกับโจทย์:{" "}
                   {result.correct_text}
                 </p>
               )}

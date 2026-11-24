@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, GitCompareArrows } from "lucide-react";
 import { api } from "../api";
-import { DataState, EmptyState, Reading } from "../components";
+import { ComparisonReading, DataState, EmptyState, Reading } from "../components";
+import { AudioText } from "../lesson-audio";
 import { Chips, PageHeading, Reveal } from "../ui";
 import { ChoicePicker } from "../selection-controls";
 import { ReturnToLesson } from "../lesson-return";
@@ -200,14 +201,7 @@ export default function Compare() {
                         {columns.map((c) => (
                           <td key={c.character}>
                             <small>{c.reading.label_th}</small>
-                            {c.reading.kind === "component" ? (
-                              <span lang="ja">{c.reading.reading}</span>
-                            ) : (
-                              <Reading
-                                text={c.reading.form}
-                                reading={c.reading.reading}
-                              />
-                            )}
+                            <ComparisonReading item={c} slug={selected.slug} />
                           </td>
                         ))}
                       </tr>
@@ -226,7 +220,7 @@ export default function Compare() {
                           และส่วนรูป
                         </th>
                         {columns.map((c) => (
-                          <td key={c.character}>{c.memory_note}</td>
+                          <td key={c.character}><AudioText text={c.memory_note} slug={selected.slug} /></td>
                         ))}
                       </tr>
                       <tr>
@@ -238,6 +232,8 @@ export default function Compare() {
                                 <Reading
                                   text={c.example.word}
                                   reading={c.example.reading}
+                                  audioKind="word"
+                                  slug={selected.slug}
                                 />
                                 <p>{c.example.meaning_th}</p>
                                 {c.example.optional && (
@@ -257,7 +253,7 @@ export default function Compare() {
                 </div>
                 <div className="difference-note">
                   <strong>จุดสังเกตเมื่อวางข้างกัน</strong>
-                  <p>{selected.difference_th}</p>
+                  <p><AudioText text={selected.difference_th} slug={selected.slug} /></p>
                 </div>
                 <div className="hero-actions">
                   <Link

@@ -11,26 +11,40 @@ import {
 import { domAnimation, LazyMotion } from "motion/react";
 import { MemoryRouter, useNavigate } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
-import { audioLookupKey, type LessonAudioKind } from "./lesson-audio";
+import {
+  audioLookupKey,
+  LessonAudio,
+  KanjiReadingList,
+  type LessonAudioKind,
+} from "./lesson-audio";
 import { LessonExperience } from "./lesson-experience";
 import type { LessonDetail } from "./types";
 
 vi.mock("./auth", () => ({ useAuth: () => ({ session: null }) }));
 vi.mock("./api", () => ({
   api: vi.fn(async (path: string) =>
-    path.includes("/practice/")
-      ? [
-          {
-            id: "test-reading",
-            kind: "reading",
-            prompt: "คำว่า「山」อ่านอย่างไร?",
-            options: [
-              { id: "a", text: "やま" },
-              { id: "b", text: "さん" },
-            ],
-          },
-        ]
-      : [],
+    path.endsWith("/check")
+      ? {
+          correct: true,
+          correct_option_id: "a",
+          correct_text: "やま",
+          explanation: "山 อ่านว่า やま",
+          selection_explanation: "",
+          persisted: false,
+        }
+      : path.includes("/practice/")
+        ? [
+            {
+              id: "test-reading",
+              kind: "reading",
+              prompt: "คำว่า「山」อ่านอย่างไร?",
+              options: [
+                { id: "a", text: "やま" },
+                { id: "b", text: "さん" },
+              ],
+            },
+          ]
+        : [],
   ),
 }));
 
@@ -132,7 +146,7 @@ class TestAudio {
   }
 }
 
-async function mount(stage: string) {
+async function mount(stage: string, htmlFirst = false) {
   vi.stubGlobal("crypto", webcrypto);
   vi.stubGlobal("Audio", TestAudio);
   vi.stubEnv("VITE_SUPABASE_URL", "https://kanjitest.supabase.co");
@@ -142,6 +156,8 @@ async function mount(stage: string) {
     ["word", "山", "やま", "a"],
     ["word", "山に行く", "やまにいく", "c"],
     ["sentence", "山に行きます。", "やまにいきます。", "d"],
+    ["quiz_choice", "やま", "やま", "a"],
+    ["quiz_choice", "さん", "さん", "b"],
   ];
   const files: Record<string, string> = {};
   const keys: Record<string, string> = {};
@@ -150,18 +166,27 @@ async function mount(stage: string) {
     files[id] = `ja/metan-normal/${id}/${seed.repeat(64)}.mp3`;
     keys[await audioLookupKey(kind, text, reading)] = id;
   }
+  let requests = 0;
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        version: 1,
-        bucket: "kanji-japanese-audio",
-        attribution: "VOICEVOX:四国めたん",
-        lessons: { "chapter-01": keys },
-        files,
-      }),
-    })),
+    vi.fn(async () =>
+      htmlFirst && requests++ === 0
+        ? new Response("<html></html>", {
+            headers: { "content-type": "text/html" },
+          })
+        : {
+            ok: true,
+            headers: new Headers({ "content-type": "application/json" }),
+            json: async () => ({
+              version: 2,
+              bucket: "kanji-japanese-audio",
+              attribution: "VOICEVOX:四国めたん",
+              lessons: { "chapter-01": keys },
+              shared: keys,
+              files,
+            }),
+          },
+    ),
   );
   function OpenCheckpoint() {
     const navigate = useNavigate();
@@ -170,6 +195,16 @@ async function mount(stage: string) {
         checkpoint test
       </button>
     );
+  }
+  if (stage === "shared") {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <LessonAudio enabled playbackScope="explorer">
+          <KanjiReadingList character="山" readings={["やま", "サン", "や"]} />
+        </LessonAudio>
+      </QueryClientProvider>,
+    );
+    return;
   }
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -191,6 +226,43 @@ afterEach(() => {
   sessionStorage.clear();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+});
+
+it("resolves exact readings without a lesson and labels missing readings without substituting", async () => {
+  await mount("shared");
+  fireEvent.click(
+    await screen.findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "ฟังเสียง 山 (サン)" }),
+  );
+  expect(TestAudio.instances[0].url).not.toBe(TestAudio.instances[1].url);
+  expect(await screen.findByText("ยังไม่มีเสียง")).toBeVisible();
+  expect(screen.queryByRole("button", { name: "ฟังเสียง 山 (や)" })).toBeNull();
+});
+
+it("surfaces an SPA HTML fallback and recovers when the index becomes available", async () => {
+  await mount("shared", true);
+  await screen.findByText("เสียงภาษาญี่ปุ่นยังโหลดไม่ได้");
+  expect(screen.queryByRole("button", { name: /ฟังเสียง/ })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "ลองใหม่" }));
+  expect(
+    await screen.findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
+  ).toBeVisible();
+  expect(fetch).toHaveBeenCalledWith("/assets/japanese-audio-index.json");
+});
+
+it("reveals word and choice sounds only after server-confirmed reading feedback", async () => {
+  await mount("check");
+  fireEvent.click(await screen.findByRole("radio", { name: /やま/ }));
+  expect(screen.queryByRole("button", { name: /ฟังเสียง/ })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
+  expect(
+    await screen.findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
+  ).toBeVisible();
+  expect(
+    await screen.findByRole("button", { name: "ฟังเสียง さん" }),
+  ).toBeVisible();
 });
 
 it("plays a kanji, reading alternatives and phrases in Guided Learning, then reuses the URL in Full Lesson", async () => {

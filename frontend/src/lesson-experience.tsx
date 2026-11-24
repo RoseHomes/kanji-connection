@@ -921,10 +921,10 @@ export function LessonExperience({
       slug={lesson.slug}
       enabled={
         lesson.status === "published" &&
-        !lesson.private_development &&
-        !(mode === "guided" && stage.phase === "check")
+        !lesson.private_development
       }
-      playbackScope={`${mode}:${stage.id}:${cardIndex}`}
+      quizOnly={mode === "guided" && stage.phase === "check"}
+      playbackScope={mode === "full" ? "full" : `${mode}:${stage.id}:${cardIndex}`}
     >
       {content}
     </LessonAudio>

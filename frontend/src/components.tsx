@@ -1,10 +1,13 @@
 import { ArrowRight, RotateCcw, BookOpen, LockKeyhole } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Kanji } from "./types";
+import type { ComparisonCharacter } from "./presentation-types";
 import { StudyContent } from "./study-content";
 import { useLessonReturn, withLessonReturn } from "./lesson-return";
 import {
+  AudioText,
   KanjiAudioReadings,
+  KanjiReadingList,
   LessonAudioButton,
   type LessonAudioKind,
 } from "./lesson-audio";
@@ -52,10 +55,11 @@ export function KanjiVisual({
     </div>
   );
 }
-export function Reading({ text, reading, audioKind }: {
+export function Reading({ text, reading, audioKind, slug }: {
   text: string;
   reading?: string;
   audioKind?: LessonAudioKind;
+  slug?: string;
 }) {
   const label = reading ? (
     <ruby lang="ja">
@@ -70,11 +74,29 @@ export function Reading({ text, reading, audioKind }: {
   return audioKind ? (
     <span className="lesson-audio-line">
       {label}
-      <LessonAudioButton kind={audioKind} text={text} reading={reading} />
+      <LessonAudioButton kind={audioKind} text={text} reading={reading} slug={slug} />
     </span>
   ) : (
     label
   );
+}
+export function ComparisonReading({ item, slug }: { item: ComparisonCharacter; slug: string }) {
+  const { reading } = item;
+  if (reading.kind === "component") {
+    return (
+      <span className="lesson-audio-line">
+        <span lang="ja">{reading.reading}</span>
+        <LessonAudioButton
+          kind="component"
+          text={reading.form || item.character}
+          reading={reading.reading}
+          slug={slug}
+          fallbackKind={reading.form ? undefined : "kanji"}
+        />
+      </span>
+    );
+  }
+  return <Reading text={reading.form} reading={reading.reading} audioKind={reading.kind === "word" ? "word" : "kanji"} slug={slug} />;
 }
 export function ReadOnlyNotice() {
   return (
@@ -144,6 +166,7 @@ export function KanjiCard({
   allowDetail?: boolean;
 }) {
   const returnTo = useLessonReturn();
+  const example = source?.example.match(/^(.+?)\s+([\p{Script=Hiragana}\p{Script=Katakana}ー]+)$/u);
   return (
     <article
       className={`kanji-card${source?.study?.role === "supplementary" ? " supplementary-card" : ""}`}
@@ -159,28 +182,31 @@ export function KanjiCard({
         character={item.character}
         meaning={source?.meaning_th ?? item.meaning_th}
       />
-      {!source?.study && <p lang="ja">{item.kunyomi.join(" · ")}</p>}
+      {!source?.study && !!item.kunyomi.length && <p><KanjiReadingList character={item.character} readings={item.kunyomi} /></p>}
       {!source?.study && (
         <small>
-          音 <span lang="ja">{item.onyomi.join("・") || "—"}</span> ·{" "}
+          音 <KanjiReadingList character={item.character} readings={item.onyomi} /> ·{" "}
           {item.strokes === null ? "ยังไม่ระบุจำนวนขีด" : `${item.strokes} ขีด`}
         </small>
       )}
-      <p>{item.note_th}</p>
+      <p><AudioText text={item.note_th} /></p>
       {source?.study && <StudyContent card={source} focused={focused} />}
-      <KanjiAudioReadings
+      {source?.study && <KanjiAudioReadings
         character={item.character}
         onyomi={item.onyomi}
         kunyomi={item.kunyomi}
         primary={source?.study?.reading.kind === "character"
           ? source.study.reading.reading
           : undefined}
-      />
+      />}
       {source && !source.study && (
         <div className="card-example">
           <small>ตัวอย่างคำที่ใช้ตัวอักษรนี้</small>
-          <p lang="ja">{source.example}</p>
-          <p>{source.memory_note}</p>
+          <p className="lesson-audio-line">
+            <span lang="ja">{source.example}</span>
+            {example && <LessonAudioButton kind="word" text={example[1]} reading={example[2]} />}
+          </p>
+          <p><AudioText text={source.memory_note} /></p>
         </div>
       )}
       {/^https?:\/\//.test(item.source_url) && (

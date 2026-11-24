@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { api } from "../api";
 import { DataState, EmptyState, KanjiVisual, Reading } from "../components";
+import { AudioText, KanjiReadingList } from "../lesson-audio";
 import type { Kanji } from "../types";
 import {
   ReturnToLesson,
@@ -59,9 +60,9 @@ export default function KanjiDetail() {
               <h1>{card.data.meaning_th}</h1>
               <dl className="reading-list">
                 <dt>คุนโยมิ</dt>
-                <dd lang="ja">{card.data.kunyomi.join(" · ") || "—"}</dd>
+                <dd><KanjiReadingList character={character} readings={card.data.kunyomi} /></dd>
                 <dt>อนโยมิ</dt>
-                <dd lang="ja">{card.data.onyomi.join(" · ") || "—"}</dd>
+                <dd><KanjiReadingList character={character} readings={card.data.onyomi} /></dd>
                 {card.data.strokes !== null && (
                   <>
                     <dt>จำนวนขีด</dt>
@@ -75,7 +76,7 @@ export default function KanjiDetail() {
                   </>
                 )}
               </dl>
-              {card.data.note_th && <p>{card.data.note_th}</p>}
+              {card.data.note_th && <p><AudioText text={card.data.note_th} /></p>}
               {/^https?:\/\//.test(card.data.source_url) && (
                 <a
                   className="text-link"
@@ -104,9 +105,9 @@ export default function KanjiDetail() {
                   className="vocabulary-item"
                   key={`${v.written_form}:${v.reading}`}
                 >
-                  <Reading text={v.written_form} reading={v.reading} />
+                  <Reading text={v.written_form} reading={v.reading} audioKind="word" />
                   <p>{v.meaning_th}</p>
-                  {v.usage_notes && <small>{v.usage_notes}</small>}
+                  {v.usage_notes && <small><AudioText text={v.usage_notes} /></small>}
                 </article>
               ))}
             </div>
@@ -139,7 +140,7 @@ export default function KanjiDetail() {
               ?.filter((r) => r.explanation_th)
               .map((r, i) => (
                 <p key={i}>
-                  <span lang="ja">{r.character}</span> · {r.explanation_th}
+                  <span lang="ja">{r.character}</span> · <AudioText text={r.explanation_th} />
                 </p>
               ))}
             {relations.data && relations.data.related.length > 0 && (

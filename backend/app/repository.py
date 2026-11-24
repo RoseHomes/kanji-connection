@@ -263,16 +263,18 @@ class DatabaseRepository:
 
     def vocabulary(self, character: str, offset=0, limit=30):
         self.kanji(character)
+        matching_vocabularies = (
+            select(VocabularyKanji.vocabulary_id)
+            .join(KanjiRecord)
+            .where(KanjiRecord.character == character)
+        )
         query = (
             select(Vocabulary)
-            .join(VocabularyKanji)
-            .join(KanjiRecord)
             .where(
-                KanjiRecord.character == character,
+                Vocabulary.id.in_(matching_vocabularies),
                 Vocabulary.status.in_(self.visible),
                 Vocabulary.access_tier == "free",
             )
-            .distinct()
             .order_by(Vocabulary.id)
             .offset(offset)
             .limit(limit)

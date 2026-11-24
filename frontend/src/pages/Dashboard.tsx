@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api } from "../api";
 import { DataState, ReadOnlyNotice, AccountGate } from "../components";
-import type { Health } from "../types";
+import type { Health, Kanji } from "../types";
+import { KanjiReadingList } from "../lesson-audio";
 import { guestSnapshot, readGuestLearning } from "../guest-learning";
 import { readProgress } from "../progress";
 import type { DashboardData, LearningLesson } from "../learning-types";
@@ -25,6 +26,17 @@ function syncLabel(key: string) {
   if (key.startsWith("lesson:"))
     return `การอ่านบท ${Number(key.split("-").at(-1))}`;
   return "ประวัติคำตอบแบบฝึกหัด";
+}
+function ReviewCardAudio({ character }: { character: string }) {
+  const { data } = useQuery({
+    queryKey: ["public-kanji", character],
+    queryFn: () => api<Kanji>(`/kanjis/${encodeURIComponent(character)}`, { anonymous: true }),
+  });
+  return data?.review_status === "published" ? (
+    <div className="lesson-audio-line">
+      <KanjiReadingList character={character} readings={[...new Set([...data.kunyomi, ...data.onyomi])]} />
+    </div>
+  ) : null;
 }
 function syncValue(kind: string, value: object | null) {
   if (!value) return "ยังไม่มี";
@@ -319,6 +331,9 @@ function PersonalDashboard() {
               {preview.rows.map((row) => (
                 <fieldset key={row.key}>
                   <legend>{syncLabel(row.key)}</legend>
+                  {row.kind === "review" && row.key.startsWith("review:") && (
+                    <ReviewCardAudio character={row.key.slice(7)} />
+                  )}
                   <div className="sync-values">
                     <p>ในเครื่อง: {syncValue(row.kind, row.guest)}</p>
                     <p>บัญชี: {syncValue(row.kind, row.cloud)}</p>

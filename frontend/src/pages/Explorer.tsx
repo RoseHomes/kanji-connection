@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { KanjiReadingList } from "../lesson-audio";
 import { Search, ArrowUpRight } from "lucide-react";
 import { api } from "../api";
 import type { Kanji, Lesson, LessonDetail } from "../types";
@@ -121,20 +122,19 @@ export default function Explorer() {
       </p>
       <div className="explorer-grid">
         {data?.map((k, i) => (
-          <Link
+          <article
             className={`explorer-tile tone-${i % 4}`}
             key={k.character}
-            to={`/explore/${encodeURIComponent(k.character)}`}
           >
-            <span className="explorer-glyph" lang="ja">
-              {k.character}
-            </span>
-            <strong>{k.meaning_th}</strong>
-            <small lang="ja">
-              {k.kunyomi.join(" · ") || k.onyomi.join(" · ")}
+            <Link className="explorer-tile-link" to={`/explore/${encodeURIComponent(k.character)}`}>
+              <span className="explorer-glyph" lang="ja">{k.character}</span>
+              <strong>{k.meaning_th}</strong>
+              <ArrowUpRight size={18} aria-hidden="true" />
+            </Link>
+            <small>
+              <KanjiReadingList character={k.character} readings={k.kunyomi.length ? k.kunyomi : k.onyomi} />
             </small>
-            <ArrowUpRight size={18} />
-          </Link>
+          </article>
         ))}
       </div>
       {!loading && !data?.length && (

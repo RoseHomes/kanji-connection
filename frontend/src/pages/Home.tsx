@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AudioText, useStopAudioOnChange } from "../lesson-audio";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -13,7 +14,7 @@ import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { api } from "../api";
 import type { Lesson } from "../types";
 import type { ComparisonGroup } from "../presentation-types";
-import { DataState, EmptyState, Reading } from "../components";
+import { ComparisonReading, DataState, EmptyState, Reading } from "../components";
 import { Reveal } from "../ui";
 export default function Home() {
   const reduce = useReducedMotion();
@@ -29,6 +30,7 @@ export default function Home() {
   const group =
     groups.data?.find((g) => g.characters.length === 3) || groups.data?.[0];
   const card = group?.characters[active % group.characters.length];
+  useStopAudioOnChange(card?.character);
   return (
     <>
       <section className="page home-hero">
@@ -97,12 +99,9 @@ export default function Home() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: reduce ? 0 : 0.18 }}
                 >
-                  <Reading
-                    text={card.reading.form}
-                    reading={card.reading.reading}
-                  />
+                  <ComparisonReading item={card} slug={group.slug} />
                   <strong>{card.meaning_th}</strong>
-                  <p>{card.memory_note}</p>
+                  <p><AudioText text={card.memory_note} slug={group.slug} /></p>
                 </m.div>
               </AnimatePresence>
               <Link className="text-link" to={`/compare?group=${group.id}`}>
@@ -118,7 +117,7 @@ export default function Home() {
             />
           ) : (
             <div className="hero-empty">
-              <span lang="ja">つながる</span>
+              <Reading text="つながる" reading="つながる" audioKind="word" />
               <p>ทุกความเข้าใจ เริ่มจากการสังเกต</p>
               <small>ชุดเรียนรู้จะแสดงเมื่อมีบทเรียนที่เข้าถึงได้</small>
             </div>

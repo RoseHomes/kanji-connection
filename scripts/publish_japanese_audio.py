@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -20,7 +21,7 @@ from prepare_japanese_audio_release import ATTRIBUTION, save_json
 BUCKET = "kanji-japanese-audio"
 LIMIT = 1024 * 1024
 PREFIX = "ja/metan-normal"
-INDEX = ROOT / "frontend/public/japanese-audio/index.json"
+INDEX = ROOT / "frontend/public/assets/japanese-audio-index.json"
 TYPES = {
     "kanji_on": "kanji",
     "kanji_kun": "kanji",
@@ -28,7 +29,10 @@ TYPES = {
     "vocabulary": "word",
     "phrase": "word",
     "proper_name": "word",
+    "note_word": "note",
+    "vocabulary_variant": "word",
     "sentence": "sentence",
+    "quiz_kana_choice": "quiz_choice",
 }
 
 
@@ -81,29 +85,63 @@ def prepare(manifest_path, mapping_path):
             web["sha256"],
         )
 
-    lessons = {}
+    lessons = defaultdict(dict)
+    shared = {}
+    shared_terms = defaultdict(set)
+    lesson_terms = defaultdict(lambda: defaultdict(set))
+    lexical = {"word", "note", "sentence"}
     for row in mapping["content"]:
         kind = TYPES.get(row["type"])
+        if kind == "note" and row["reading_status"] == "contextual_audio":
+            term = lookup_key("term", row["text"], "")
+            chapters = row["reading_review"]["context_chapters"]
+            for ref in row["references"]:
+                if ref["chapter"] in chapters:
+                    lesson_terms[ref["lesson_slug"]][term].add(row["audio_id"])
+        if kind in lexical and row["reading_status"] == "needs_manual_review":
+            term = lookup_key("term", row["text"], "")
+            shared_terms[term].add("")
+            for ref in row["references"]:
+                lesson_terms[ref["lesson_slug"]][term].add("")
         if not kind or row["reading_status"] != "ready_for_preview":
             continue
         audio_id = row["audio_id"]
         if audio_id not in files:
             raise ValueError(f"Unknown lesson audio ID: {audio_id}")
         key = lookup_key(kind, row["text"], row["verified_reading"])
+        if kind != "quiz_choice" and shared.setdefault(key, audio_id) != audio_id:
+            raise ValueError(f"Conflicting exact playback key: {row['content_id']}")
+        term = lookup_key("term", row["text"], "") if kind in lexical else None
+        if term:
+            shared_terms[term].add(audio_id)
         for ref in row["references"]:
-            if ref["table"] == "quiz_questions":
+            if ref["table"] == "quiz_questions" and kind != "quiz_choice":
                 continue
-            lesson = lessons.setdefault(ref["lesson_slug"], {})
+            lesson = lessons[ref["lesson_slug"]]
             if lesson.setdefault(key, audio_id) != audio_id:
                 raise ValueError(f"Conflicting playback keys in {ref['lesson_slug']}")
+            if term:
+                lesson_terms[ref["lesson_slug"]][term].add(audio_id)
 
-    media = {audio_id for lesson in lessons.values() for audio_id in lesson.values()}
+    # A blank scoped value blocks fallback when that mention is ambiguous or held.
+    shared.update(
+        {key: next(iter(ids)) for key, ids in shared_terms.items() if len(ids) == 1}
+    )
+    for slug, terms in lesson_terms.items():
+        lessons[slug].update(
+            {
+                key: next(iter(ids)) if len(ids) == 1 else ""
+                for key, ids in terms.items()
+            }
+        )
+
     index = {
-        "version": 1,
+        "version": 2,
         "bucket": BUCKET,
         "attribution": ATTRIBUTION,
         "lessons": lessons,
-        "files": {key: files[key][0] for key in sorted(media)},
+        "shared": shared,
+        "files": {key: files[key][0] for key in sorted(files)},
     }
     return files, index
 

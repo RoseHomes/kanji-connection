@@ -12,10 +12,11 @@ import {
   type ReactNode,
 } from "react";
 
-export type LessonAudioKind = "kanji" | "component" | "word" | "sentence";
+export type LessonAudioKind =
+  "kanji" | "component" | "word" | "sentence" | "term" | "quiz_choice";
 const attribution = "VOICEVOX:四国めたん";
 const bucket = "kanji-japanese-audio";
-const indexPath = "/japanese-audio/index.json";
+const indexPath = "/assets/japanese-audio-index.json";
 const timeoutMs = 12_000;
 
 interface PlaybackIndex {
@@ -23,19 +24,25 @@ interface PlaybackIndex {
   bucket: string;
   attribution: string;
   lessons: Record<string, Record<string, string>>;
+  shared: Record<string, string>;
   files: Record<string, string>;
 }
 
 async function getIndex() {
   const response = await fetch(indexPath);
-  if (!response.ok) return null;
+  if (
+    !response.ok ||
+    response.headers.get("content-type")?.includes("text/html")
+  )
+    throw new Error("Japanese audio index is unavailable");
   const index = (await response.json()) as PlaybackIndex;
   if (
-    index.version !== 1 ||
+    index.version !== 2 ||
     index.bucket !== bucket ||
-    index.attribution !== attribution
+    index.attribution !== attribution ||
+    !index.shared || !index.lessons || !index.files
   )
-    return null;
+    throw new Error("Invalid Japanese audio index");
   return index;
 }
 
@@ -68,22 +75,26 @@ type PlaybackState = {
   phase: "loading" | "playing" | "error";
 } | null;
 interface AudioContextValue {
-  entries: Record<string, string>;
-  files: Record<string, string>;
+  index: PlaybackIndex;
+  slug?: string;
+  quizOnly: boolean;
   origin: string;
   state: PlaybackState;
   toggle: (control: string, url: string) => void;
+  stop: () => void;
 }
 const LessonAudioContext = createContext<AudioContextValue | null>(null);
 
 export function LessonAudio({
   slug,
   enabled,
+  quizOnly = false,
   playbackScope,
   children,
 }: {
-  slug: string;
+  slug?: string;
   enabled: boolean;
+  quizOnly?: boolean;
   playbackScope: string;
   children: ReactNode;
 }) {
@@ -115,10 +126,15 @@ export function LessonAudio({
     audio.load();
   }, []);
 
+  const stop = useCallback(() => {
+    release();
+    setState(null);
+  }, [release]);
+
   useLayoutEffect(() => {
     setState(null);
     return release;
-  }, [active, playbackScope, release, slug]);
+  }, [active, playbackScope, release, slug, quizOnly]);
 
   function toggle(control: string, url: string) {
     const sameControl = current.current?.control === control;
@@ -157,15 +173,22 @@ export function LessonAudio({
     audio.play().catch(() => finish(true));
   }
 
-  const entries = active && index.data?.lessons?.[slug];
   const value =
-    entries && index.data?.files
-      ? { entries, files: index.data.files, origin, state, toggle }
+    active && index.data
+      ? { index: index.data, slug, quizOnly, origin, state, toggle, stop }
       : null;
   return (
     <LessonAudioContext.Provider value={value}>
       {children}
       {value && <small className="lesson-audio-credit">{attribution}</small>}
+      {active && index.isError && (
+        <small className="lesson-audio-credit">
+          เสียงภาษาญี่ปุ่นยังโหลดไม่ได้{" "}
+          <button type="button" onClick={() => void index.refetch()}>
+            ลองใหม่
+          </button>
+        </small>
+      )}
     </LessonAudioContext.Provider>
   );
 }
@@ -174,40 +197,64 @@ export function LessonAudioButton({
   kind,
   text,
   reading,
+  slug,
+  quiz = false,
+  fallbackKind,
 }: {
   kind: LessonAudioKind;
   text: string;
   reading?: string;
+  slug?: string;
+  quiz?: boolean;
+  fallbackKind?: LessonAudioKind;
 }) {
   const context = useContext(LessonAudioContext);
   const control = useId();
-  const entries = context?.entries;
-  const [resolved, setResolved] = useState<{ lookup: string; key: string }>();
-  const lookup = `${kind}\x1f${text}\x1f${reading}`;
+  const allowed = !!context && (!context.quizOnly || quiz);
+  const kana = reading || (kind === "term" ? "" : undefined);
+  const [resolved, setResolved] = useState<{
+    lookup: string;
+    keys: string[];
+  }>();
+  const lookup = `${kind}\x1f${fallbackKind}\x1f${text}\x1f${kana}`;
   useEffect(() => {
-    if (!entries || !reading || !globalThis.crypto?.subtle) return;
+    if (!allowed || kana === undefined || !globalThis.crypto?.subtle) return;
     let cancelled = false;
-    void audioLookupKey(kind, text, reading)
-      .then((key) => {
-        if (!cancelled) setResolved({ lookup, key });
+    void Promise.all(
+      (fallbackKind ? [kind, fallbackKind] : [kind]).map((type) =>
+        audioLookupKey(type, text, kana),
+      ),
+    )
+      .then((keys) => {
+        if (!cancelled) setResolved({ lookup, keys });
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [entries, kind, lookup, reading, text]);
-  const audioId =
-    resolved?.lookup === lookup ? entries?.[resolved.key] : undefined;
-  const path = audioId && context?.files[audioId];
+  }, [allowed, fallbackKind, kind, lookup, kana, text]);
+  const lesson = slug || context?.slug;
+  const keys = resolved?.lookup === lookup ? resolved.keys : undefined;
+  const audioId = keys
+    ?.map(
+      (key) =>
+        (lesson ? context?.index.lessons[lesson]?.[key] : undefined) ??
+        context?.index.shared[key],
+    )
+    .find(Boolean);
+  const path = audioId && context?.index.files[audioId];
+  if (!context || !allowed || !keys) return null;
   if (
-    !context ||
     !path ||
     !/^ja\/metan-normal\/wav-[a-f0-9]{24}\/[a-f0-9]{64}\.mp3$/.test(path)
-  )
-    return null;
+  ) {
+    return kind === "term" || kind === "quiz_choice" ? null : (
+      <small className="audio-unavailable">ยังไม่มีเสียง</small>
+    );
+  }
   const state = context.state?.control === control ? context.state.phase : null;
   const busy = state === "loading" || state === "playing";
-  const label = text === reading ? text : `${text} (${reading})`;
+  const label = !reading || text === reading ? text : `${text} (${reading})`;
   return (
     <span className="lesson-audio-control">
       <button
@@ -239,6 +286,54 @@ export function LessonAudioButton({
       </span>
     </span>
   );
+}
+
+export function useStopAudioOnChange(scope: string | number | undefined) {
+  const stop = useContext(LessonAudioContext)?.stop;
+  useLayoutEffect(() => stop, [scope, stop]);
+}
+
+export function AudioText({
+  text,
+  slug,
+  quiz,
+}: {
+  text: string;
+  slug?: string;
+  quiz?: boolean;
+}) {
+  const context = useContext(LessonAudioContext);
+  if (!context || (context.quizOnly && !quiz)) return text;
+  const segments = text.split(
+    /([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々ー]+[。！？]?)/u,
+  );
+  return segments.map((part, index) =>
+    index % 2 && !/^\p{Script=Han}$/u.test(part) ? (
+      <span className="lesson-audio-line" key={index}>
+        <span lang="ja">{part}</span>
+        <LessonAudioButton kind="term" text={part} slug={slug} quiz={quiz} />
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
+export function KanjiReadingList({
+  character,
+  readings,
+}: {
+  character: string;
+  readings: string[];
+}) {
+  return readings.length
+    ? [...new Set(readings)].map((reading) => (
+        <span className="lesson-audio-line" key={reading}>
+          <span lang="ja">{reading}</span>
+          <LessonAudioButton kind="kanji" text={character} reading={reading} />
+        </span>
+      ))
+    : "—";
 }
 
 export function KanjiAudioReadings({
@@ -276,16 +371,7 @@ export function KanjiAudioReadings({
           <div key={label}>
             <dt lang="ja">{label}</dt>
             <dd>
-              {values.map((reading) => (
-                <span className="lesson-audio-line" key={reading}>
-                  <span lang="ja">{reading}</span>
-                  <LessonAudioButton
-                    kind="kanji"
-                    text={character}
-                    reading={reading}
-                  />
-                </span>
-              ))}
+              <KanjiReadingList character={character} readings={values} />
             </dd>
           </div>
         ))}

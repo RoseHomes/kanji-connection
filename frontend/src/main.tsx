@@ -25,6 +25,7 @@ import { Reveal } from "./ui";
 import Home from "./pages/Home";
 import "./styles.css";
 import { AuthProvider, useAuth } from "./auth";
+import { LessonAudio } from "./lesson-audio";
 const Catalog = lazy(() => import("./pages/Catalog"));
 const Lesson = lazy(() => import("./pages/Lesson"));
 const Explorer = lazy(() => import("./pages/Explorer"));
@@ -40,7 +41,7 @@ const client = new QueryClient({
 function App() {
   const { session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   useEffect(() => {
     setMenuOpen(false);
     window.scrollTo(0, 0);
@@ -117,6 +118,7 @@ function App() {
           }
         >
           <Reveal key={pathname}>
+            <LessonAudio enabled={!/^\/lessons\/[^/]+\/?$/.test(pathname)} playbackScope={`${pathname}${search}`}>
             <Routes key={session?.user.id || "guest"}>
               <Route path="/" element={<Home />} />
               <Route path="/lessons" element={<Catalog />} />
@@ -139,6 +141,7 @@ function App() {
                 }
               />
             </Routes>
+            </LessonAudio>
           </Reveal>
         </Suspense>
       </main>

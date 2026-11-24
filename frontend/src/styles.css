@@ -1436,7 +1436,13 @@ footer {
   font-size: 68px;
   line-height: 1.7;
 }
-.explorer-tile > strong {
+.explorer-tile-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.explorer-tile-link > strong {
   font-size: 0.93rem;
   text-align: center;
   margin-top: 9px;
@@ -1446,7 +1452,7 @@ footer {
   font-size: 0.84rem;
   color: var(--muted);
 }
-.explorer-tile > svg {
+.explorer-tile-link > svg {
   position: absolute;
   top: 13px;
   right: 13px;
@@ -3732,6 +3738,23 @@ button.disclosure-trigger {
 .lesson-audio-error {
   color: var(--accent);
   font-size: 0.82rem;
+}
+.audio-unavailable {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.quiz-reading-audio,
+.review-audio-readings dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.quiz-reading-audio {
+  margin-block: 8px;
+}
+.review-audio-readings {
+  margin: 12px auto;
+  max-width: 34rem;
 }
 .lesson-audio-credit {
   display: block;
