@@ -46,6 +46,7 @@ manifest.root_inputs_restricted = true;
 const requiredFrontendInputs = [
   ".vercelignore", "vercel.json", "package.json", "package-lock.json",
   "index.html", "tsconfig.json", "vite.config.ts", "src/main.tsx",
+  "public/assets/japanese-audio-index.json",
 ];
 const protectedFrontendInputs = [
   ".env", ".env.production.example", "private/book.json", "reference/book.PDF",
@@ -55,6 +56,7 @@ const protectedFrontendInputs = [
   "src/client.key", "src/client.pem", "src/client.crt", "src/client.pfx",
   "src/password.dpapi", "src/credentials.json", "src/local.sqlite3",
   "src/content.json", "src/Home.test.tsx", "src/test-setup.ts",
+  "public/assets/private.json", "public/unreviewed.json",
 ];
 let frontendPathBaseChecks = 0;
 let backendPathBaseChecks = 0;
@@ -149,6 +151,7 @@ for (const project of ["frontend", "backend"]) {
       rule.test("/lessons/chapter-02"), "SPA/Auth callback rewrite missing");
     require(!rule.test("/api/v1/health") &&
       !rule.test("/api") &&
+      !rule.test("/assets/japanese-audio-index.json") &&
       !rule.test(
         "/assets/missing.js",
       ), "API/assets must never become SPA HTML");

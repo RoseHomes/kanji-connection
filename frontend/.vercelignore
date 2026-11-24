@@ -9,6 +9,11 @@
 !/tsconfig.json
 !/vite.config.ts
 !/src/
+!/public/
+/public/*
+!/public/assets/
+/public/assets/*
+!/public/assets/japanese-audio-index.json
 !/frontend/
 /frontend/*
 !/frontend/.vercelignore
@@ -19,6 +24,11 @@
 !/frontend/tsconfig.json
 !/frontend/vite.config.ts
 !/frontend/src/
+!/frontend/public/
+/frontend/public/*
+!/frontend/public/assets/
+/frontend/public/assets/*
+!/frontend/public/assets/japanese-audio-index.json
 **/.env*
 **/private/
 **/reference/
