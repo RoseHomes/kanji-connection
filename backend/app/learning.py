@@ -153,7 +153,9 @@ class Learning:
         q = self.question(key)
         return self.record_attempt(q, submission, answer, self.grade(q, answer))
 
-    def record_attempt(self, question, submission, answer, result, *, presentation=None):
+    def record_attempt(
+        self, question, submission, answer, result, *, presentation=None, details=None
+    ):
         existing = self.db.scalar(
             select(QuizAttempt).where(
                 QuizAttempt.owner_id == self.user.id, QuizAttempt.submission_id == submission
@@ -176,6 +178,7 @@ class Learning:
                 selected_answer={
                     "answer": answer,
                     **({"presentation": presentation} if presentation else {}),
+                    **({"details": details} if details else {}),
                     "grade_status": result["status"],
                     "result": result,
                 },
@@ -295,12 +298,34 @@ class Learning:
             correct += int(is_graded and attempt.correct)
             pending += int(not is_graded)
             if len(attempts) < 30:
+                saved = attempt.selected_answer
+                result = saved.get("result", {})
+                details = saved.get("details", {})
+                expected = result.get("correct_text") or result.get("expected")
+                if saved.get("presentation"):
+                    prompt = details.get("prompt")
+                    answer = details.get("answer", expected if attempt.correct else None)
+                else:
+                    prompt = question.prompt.get("text")
+                    answer = saved.get("answer")
                 attempts.append(
                     {
+                        "id": str(attempt.submission_id),
                         "question_key": f"{lesson.slug}:{question.stable_key}",
                         "correct": attempt.correct if is_graded else None,
                         "status": status,
                         "created_at": utc(attempt.created_at).isoformat(),
+                        **{
+                            key: value
+                            for key, value in {
+                                "prompt": prompt,
+                                "answer": answer,
+                                "expected": expected,
+                                "explanation": result.get("explanation"),
+                                "selection_explanation": result.get("selection_explanation"),
+                            }.items()
+                            if value
+                        },
                     }
                 )
         return {

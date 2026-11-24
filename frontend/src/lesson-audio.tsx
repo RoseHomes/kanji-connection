@@ -278,9 +278,9 @@ export function LessonAudioButton({
         }
       >
         {busy ? (
-          <Square size={13} aria-hidden="true" />
+          <Square size={16} aria-hidden="true" />
         ) : (
-          <Volume2 size={14} aria-hidden="true" />
+          <Volume2 size={16} aria-hidden="true" />
         )}
       </button>
       <span

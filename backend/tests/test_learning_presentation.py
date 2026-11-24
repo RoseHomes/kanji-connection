@@ -486,6 +486,11 @@ def test_published_guest_practice_does_not_promote_private_source_c(edition):
                 assert dashboard.headers["cache-control"] == "private, no-store"
                 payload = dashboard.json()
                 assert payload["quiz"]["graded"] == payload["quiz"]["correct"] == 1
+                recent = payload["quiz"]["recent"][0]
+                assert recent["id"] == data_in["submission_id"]
+                assert recent["prompt"] == public_q["prompt"]
+                assert recent["answer"] == recent["expected"] == saved.json()["correct_text"]
+                assert recent["explanation"] == saved.json()["explanation"]
                 assert payload["lessons"][0]["progress"] == 100
                 assert payload["cards"][kanji["character"]]["reviews"] == 1
         with isolated.connect() as connection:

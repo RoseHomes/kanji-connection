@@ -226,7 +226,13 @@ it("completes a full round, reviews explanations, and retries only incorrect ite
   await screen.findByText("เก่งขึ้นอีกหนึ่งความเชื่อมโยง");
   expect(screen.getByText(/ตอบถูก 1 ข้อ/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: /ดูคำตอบทั้งรอบ/ }));
-  expect(screen.getByText("林 มี 木 สองตัว")).toBeInTheDocument();
+  expect(screen.queryByText("林 มี 木 สองตัว")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "ดูรายละเอียด ข้อ 2" }));
+  expect(screen.getByRole("dialog", { name: "ข้อ 2" })).toContainElement(
+    screen.getByText("林 มี 木 สองตัว"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "ปิดรายละเอียด" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: /ลองข้อที่ยังสับสน/ }));
   expect(screen.getByText("ข้อ 1 จาก 1")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("radio", { name: /ต้นไม้/ }));

@@ -5,7 +5,8 @@ import { useAuth } from "../auth";
 import { api } from "../api";
 import { DataState, ReadOnlyNotice, AccountGate } from "../components";
 import type { Health, Kanji } from "../types";
-import { KanjiReadingList } from "../lesson-audio";
+import { AudioText, KanjiReadingList } from "../lesson-audio";
+import { AnswerHistoryItem } from "../answer-history";
 import { guestSnapshot, readGuestLearning } from "../guest-learning";
 import { readProgress } from "../progress";
 import type { DashboardData, LearningLesson } from "../learning-types";
@@ -186,22 +187,20 @@ function PersonalDashboard() {
       )}
       {(!session || records) && (
         <>
-          <div className="stat-grid">
-            <article className="notice">
-              <strong>{completed}</strong>
-              <p>บทที่อ่านจบ</p>
-            </article>
-            <article className="notice">
-              <strong>
-                {correct} / {graded}
-              </strong>
-              <p>คำตอบที่ตรวจแล้วและตอบถูก</p>
-            </article>
-            <article className="notice">
-              <strong>{due}</strong>
-              <p>การ์ดที่ถึงกำหนด</p>
-            </article>
-          </div>
+          <dl className="stat-grid">
+            <div>
+              <dt>บทที่อ่านจบ</dt>
+              <dd>{completed}</dd>
+            </div>
+            <div>
+              <dt>ตอบถูก / ตรวจแล้ว</dt>
+              <dd>{correct} / {graded}</dd>
+            </div>
+            <div>
+              <dt>การ์ดที่ถึงกำหนด</dt>
+              <dd>{due}</dd>
+            </div>
+          </dl>
           <div className="dashboard-actions">
             <Link className="button primary" to="/review">
               ทบทวนแฟลชการ์ด
@@ -245,19 +244,27 @@ function PersonalDashboard() {
               )}
               {records.quiz.recent.length > 0 && (
                 <ul className="history-list">
-                  {records.quiz.recent.map((a, i) => (
-                    <li key={`${a.question_key}:${i}`}>
-                      <span>{questionLabel(a.question_key)}</span>
-                      <span>
-                        {a.correct === null
-                          ? "ไม่คิดคะแนนอัตโนมัติ"
-                          : a.correct
-                            ? "ถูกต้อง"
-                            : "ลองใหม่"}{" "}
-                        · {new Date(a.created_at).toLocaleDateString("th-TH")}
-                      </span>
-                    </li>
-                  ))}
+                  {records.quiz.recent.map((a, i) => {
+                    const label = questionLabel(a.question_key);
+                    const date = new Date(a.created_at);
+                    return (
+                      <AnswerHistoryItem
+                        key={a.id ?? `${a.question_key}:${i}`}
+                        title={`${label} · ${date.toLocaleDateString("th-TH")}`}
+                        detailTitle={label}
+                        correct={a.correct}
+                      >
+                        <p className="subtle">
+                          <time dateTime={a.created_at}>{date.toLocaleString("th-TH")}</time>
+                        </p>
+                        {a.prompt && <p><strong><AudioText text={a.prompt} /></strong></p>}
+                        {a.answer && <p>คำตอบของคุณ: <AudioText text={a.answer} /></p>}
+                        {a.expected && <p>คำตอบที่ตรงกับโจทย์: <AudioText text={a.expected} /></p>}
+                        {a.explanation && <p><AudioText text={a.explanation} /></p>}
+                        {a.selection_explanation && <p><AudioText text={a.selection_explanation} /></p>}
+                      </AnswerHistoryItem>
+                    );
+                  })}
                 </ul>
               )}
             </section>

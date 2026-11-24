@@ -243,6 +243,7 @@ def check_choice(db, settings, user, slug, question_id, choice_id, *, submission
             choice_id,
             {**result, "persisted": True, "status": "graded"},
             presentation=question_id,
+            details={"prompt": question["prompt"], "answer": selected["text"]},
         )
     return result
 

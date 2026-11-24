@@ -23,19 +23,22 @@ function Node({ item }: { item: ComparisonItem }) {
         {item.kanji}
       </span>
       {item.kind === "component" && <small>ส่วนประกอบ</small>}
-      <AudioContentRow audio={reading && (
-        <LessonAudioButton
-          kind={kind === "component" ? "component" : kind === "word" ? "word" : "kanji"}
-          text={study?.form ?? item.kanji}
-          reading={reading}
+      {study && <small>{study.label_th}</small>}
+      {reading && (
+        <AudioContentRow
+          label={study && kind !== "component"
+            ? <Reading text={study.form} reading={reading} />
+            : <small lang="ja">{reading}</small>}
+          audio={
+            <LessonAudioButton
+              kind={kind === "component" ? "component" : kind === "word" ? "word" : "kanji"}
+              text={study?.form ?? item.kanji}
+              reading={reading}
+            />
+          }
         />
-      )}>
-        {study && <small>{study.label_th}</small>}
-        {study && kind !== "component" ? (
-          <Reading text={study.form} reading={reading} />
-        ) : reading && <small lang="ja">{reading}</small>}
-        <strong>{item.meaning_th || item.label_th}</strong>
-      </AudioContentRow>
+      )}
+      <strong>{item.meaning_th || item.label_th}</strong>
     </div>
   );
 }

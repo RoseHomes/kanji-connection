@@ -281,6 +281,7 @@ it("reveals word and choice sounds only after server-confirmed reading feedback"
   ).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: /ดูผลการฝึก/ }));
   fireEvent.click(await screen.findByRole("button", { name: /ดูคำตอบทั้งรอบ/ }));
+  fireEvent.click(screen.getByRole("button", { name: "ดูรายละเอียด ข้อ 1" }));
   expect(
     await screen.findByRole("button", { name: "ฟังเสียง さん" }),
   ).toBeVisible();
@@ -307,6 +308,7 @@ it("plays the published lesson reading before a Thai meaning answer and replays 
   fireEvent.click(screen.getByRole("button", { name: /ตรวจคำตอบ/ }));
   fireEvent.click(await screen.findByRole("button", { name: /ดูผลการฝึก/ }));
   fireEvent.click(await screen.findByRole("button", { name: /ดูคำตอบทั้งรอบ/ }));
+  fireEvent.click(screen.getByRole("button", { name: "ดูรายละเอียด ข้อ 1" }));
   expect(
     await screen.findByRole("button", { name: "ฟังเสียง 山 (やま)" }),
   ).toBeVisible();

@@ -9,6 +9,15 @@ HTMLElement.prototype.hasPointerCapture = function () {
 HTMLElement.prototype.setPointerCapture = function () {};
 HTMLElement.prototype.releasePointerCapture = function () {};
 
+// jsdom omits modal methods. Browser checks cover native focus and Escape.
+HTMLDialogElement.prototype.showModal = function () {
+  this.open = true;
+};
+HTMLDialogElement.prototype.close = function () {
+  this.open = false;
+  this.dispatchEvent(new Event("close"));
+};
+
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({

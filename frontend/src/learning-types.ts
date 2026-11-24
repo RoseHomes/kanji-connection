@@ -11,10 +11,16 @@ export interface DashboardData {
     correct: number;
     pending: number;
     recent: {
+      id?: string;
       question_key: string;
       correct: boolean | null;
       status: string;
       created_at: string;
+      prompt?: string;
+      answer?: string;
+      expected?: string;
+      explanation?: string;
+      selection_explanation?: string;
     }[];
   };
 }

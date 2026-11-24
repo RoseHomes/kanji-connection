@@ -204,7 +204,7 @@ export default function Compare() {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
+                      <tr className="comparison-reading-row">
                         <th scope="row">คำอ่าน</th>
                         {columns.map((c) => (
                           <td key={c.character}>

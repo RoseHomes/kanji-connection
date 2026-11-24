@@ -15,6 +15,7 @@ import type { Health, Lesson, LessonDetail } from "../types";
 import { useAuth } from "../auth";
 import type { PracticeQuestion, ChoiceResult } from "../presentation-types";
 import { DataState, EmptyState } from "../components";
+import { AnswerHistoryItem } from "../answer-history";
 import { PageHeading } from "../ui";
 import { useReturnHref } from "../lesson-return";
 import {
@@ -444,7 +445,7 @@ export function PracticeRound({
                 : "ผลรอบนี้อยู่เฉพาะหน้านี้ ไม่ได้บันทึกในบัญชี"}
         </p>
         {saveStatus}
-        <div className="hero-actions">
+        <div className="hero-actions result-actions">
           {correct < history.length && (
             <button className="primary" onClick={() => retry(true)}>
               <RotateCcw size={17} />
@@ -462,22 +463,33 @@ export function PracticeRound({
           )}
         </div>
         {review && (
-          <ol className="answer-review">
-            {history.map((a, i) => (
-              <li key={a.question.id}>
-                <strong>
-                  {a.result.correct ? (
-                    <CircleCheck size={18} />
-                  ) : (
-                    <RotateCcw size={18} />
-                  )}{" "}
-                  ข้อ {i + 1}: <AudioText text={a.question.prompt} slug={slug} quiz />
-                </strong>
-                <p>คำตอบที่ตรงกับโจทย์: <AudioText text={a.result.correct_text} slug={slug} quiz /></p>
-                <p><AudioText text={a.result.explanation} slug={slug} quiz /></p>
-                <QuizAnswerAudio question={a.question} result={a.result} slug={slug} lesson={audioLesson.data} includeMeaning />
-              </li>
-            ))}
+          <ol className="history-list">
+            {history.map(({ question, choice, result }, i) => {
+              const answer = question.options.find((option) => option.id === choice)?.text ?? choice;
+              return (
+                <AnswerHistoryItem
+                  key={question.id}
+                  title={`ข้อ ${i + 1} · ${question.prompt}`}
+                  detailTitle={`ข้อ ${i + 1}`}
+                  correct={result.correct}
+                >
+                  <p><strong><AudioText text={question.prompt} slug={slug} quiz /></strong></p>
+                  <p>คำตอบของคุณ: <AudioText text={answer} slug={slug} quiz /></p>
+                  <p>คำตอบที่ตรงกับโจทย์: <AudioText text={result.correct_text} slug={slug} quiz /></p>
+                  <p><AudioText text={result.explanation} slug={slug} quiz /></p>
+                  {result.selection_explanation && (
+                    <p><AudioText text={result.selection_explanation} slug={slug} quiz /></p>
+                  )}
+                  <QuizAnswerAudio
+                    question={question}
+                    result={result}
+                    slug={slug}
+                    lesson={audioLesson.data}
+                    includeMeaning
+                  />
+                </AnswerHistoryItem>
+              );
+            })}
           </ol>
         )}
       </m.section>
@@ -535,7 +547,7 @@ export function PracticeRound({
           <div className="quiz-prompt">
             <h2 ref={heading} tabIndex={-1}>{question.prompt}</h2>
             {promptGlyph && (result || canHearMeaningPrompt(question)) && (
-              <QuizGlyphAudio glyph={promptGlyph} lesson={audioLesson.data} onlyCharacter={!result} />
+              <QuizGlyphAudio glyph={promptGlyph} lesson={audioLesson.data} onlyCharacter={!result} showText />
             )}
           </div>
           <form

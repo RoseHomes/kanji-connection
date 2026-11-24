@@ -81,12 +81,23 @@ export function Reading({ text, reading, audioKind, slug }: {
     label
   );
 }
-export function AudioContentRow({ children, audio }: { children: ReactNode; audio: ReactNode }) {
+export function AudioContentRow({
+  label,
+  children,
+  audio,
+}: {
+  label: ReactNode;
+  children?: ReactNode;
+  audio: ReactNode;
+}) {
   return (
-    <div className="reading-audio-row">
-      <div className="reading-audio-copy">{children}</div>
-      {audio}
-    </div>
+    <>
+      <span className="lesson-audio-line">
+        {label}
+        {audio}
+      </span>
+      {children}
+    </>
   );
 }
 
@@ -98,8 +109,10 @@ export function ReadingAudioRow({ text, reading, kind, slug, children }: {
   children?: ReactNode;
 }) {
   return (
-    <AudioContentRow audio={<LessonAudioButton kind={kind} text={text} reading={reading} slug={slug} />}>
-      <Reading text={text} reading={reading} />
+    <AudioContentRow
+      label={<Reading text={text} reading={reading} />}
+      audio={<LessonAudioButton kind={kind} text={text} reading={reading} slug={slug} />}
+    >
       {children}
     </AudioContentRow>
   );
@@ -113,16 +126,18 @@ export function ComparisonReading({ item, slug, children }: {
   const { reading } = item;
   if (reading.kind === "component") {
     return (
-      <AudioContentRow audio={
-        <LessonAudioButton
-          kind="component"
-          text={reading.form || item.character}
-          reading={reading.reading}
-          slug={slug}
-          fallbackKind={reading.form ? undefined : "kanji"}
-        />
-      }>
-        <span lang="ja">{reading.reading}</span>
+      <AudioContentRow
+        label={<span lang="ja">{reading.reading}</span>}
+        audio={
+          <LessonAudioButton
+            kind="component"
+            text={reading.form || item.character}
+            reading={reading.reading}
+            slug={slug}
+            fallbackKind={reading.form ? undefined : "kanji"}
+          />
+        }
+      >
         {children}
       </AudioContentRow>
     );
