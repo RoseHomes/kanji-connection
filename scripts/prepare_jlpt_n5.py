@@ -5,10 +5,11 @@ import io
 import json
 from collections import Counter
 
-from app.content_revision import digest
-from app.expansion_import import ImportPlan, pair
 from jlpt_n5_reference import audit_matches, published
 from publish_japanese_audio import lookup_key
+
+from app.content_revision import digest
+from app.expansion_import import ImportPlan, pair
 
 # Explicit teaching selections from the checked catalog. These are proposals,
 # never inferred from spelling, a keyword, or POS alone.

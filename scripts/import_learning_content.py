@@ -17,14 +17,15 @@ from sqlalchemy.orm import Session
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
+from jlpt_n5_reference import fetch_sources, load_reference
+from prepare_jlpt_n5 import prepare, read_baseline, write_json
+
 from app.content_revision import digest
 from app.editorial_sync import TABLES as BOOK_TABLES
 from app.editorial_sync import normalized
 from app.expansion_import import SHA, ImportPlan, Model, apply_plan
 from app.learning_paths import list_paths
 from app.models import Base
-from jlpt_n5_reference import fetch_sources, load_reference
-from prepare_jlpt_n5 import prepare, read_baseline, write_json
 
 EXPANSION = frozenset(
     (

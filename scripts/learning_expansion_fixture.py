@@ -3,6 +3,9 @@
 import json
 from pathlib import Path
 
+from sqlalchemy import create_engine, event, select, update
+from sqlalchemy.orm import Session
+
 from app.content_revision import digest
 from app.editorial_preview_snapshot import materialize_snapshot, readonly_engine
 from app.editorial_sync import TABLES, snapshot
@@ -16,8 +19,6 @@ from app.models import (
     LearningUnit,
     Vocabulary,
 )
-from sqlalchemy import create_engine, event, select, update
-from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[1]
 OPENJLPT_VERSION = "0d1d3410bec90bd4098a7c72de820543cb4f707c"
