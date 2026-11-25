@@ -26,7 +26,8 @@ import {
 } from "../practice-saves";
 import {
   AudioText,
-  LessonAudioButton,
+  LessonAudioRow,
+  type LessonAudioClip,
   useLessonAudioAvailable,
   useStopAudioOnChange,
 } from "../lesson-audio";
@@ -59,60 +60,48 @@ function canHearMeaningPrompt(question: PracticeQuestion) {
   );
 }
 
-function QuizGlyphAudio({
-  glyph,
-  lesson,
+function quizGlyphClip(
+  glyph: string,
+  lesson: LessonDetail | undefined,
   onlyCharacter = false,
-  showText = false,
-}: {
-  glyph: string;
-  lesson: LessonDetail | undefined;
-  onlyCharacter?: boolean;
-  showText?: boolean;
-}) {
+): LessonAudioClip | undefined {
   if (!lesson || lesson.status !== "published" || lesson.private_development)
-    return null;
+    return;
   const lessonCards = lesson.sections?.flatMap((section) =>
     section.blocks.flatMap((block) => block.cards || []),
   );
   const reading = lessonCards?.find((card) => card.character === glyph)?.study
     ?.reading;
-  if (!reading) return null;
+  if (!reading) return;
   // After grading, a taught inflected form can play as a separately labelled word.
   if (
     !onlyCharacter &&
     reading.kind === "word" &&
     reading.form.includes(glyph)
   ) {
-    return (
-      <LessonAudioButton
-        kind="word"
-        text={reading.form}
-        reading={reading.reading}
-        slug={lesson.slug}
-        quiz
-        hideUnavailable
-        showText
-      />
-    );
+    return {
+      kind: "word",
+      text: reading.form,
+      reading: reading.reading,
+      slug: lesson.slug,
+      quiz: true,
+      hideUnavailable: true,
+    };
   }
   if (
     reading.form !== glyph ||
     (reading.kind !== "character" &&
       (onlyCharacter || reading.kind !== "component"))
   )
-    return null;
-  return (
-    <LessonAudioButton
-      kind={reading.kind === "component" ? "component" : "kanji"}
-      text={glyph}
-      reading={reading.reading}
-      slug={lesson.slug}
-      quiz
-      hideUnavailable
-      showText={showText}
-    />
-  );
+    return;
+  return {
+    kind: reading.kind === "component" ? "component" : "kanji",
+    text: glyph,
+    reading: reading.reading,
+    slug: lesson.slug,
+    quiz: true,
+    hideUnavailable: true,
+  };
 }
 
 function QuizAnswerAudio({
@@ -146,7 +135,7 @@ function QuizAnswerAudio({
     return (
       <div className="quiz-answer-audio" aria-label="ฟังคำอ่านหลังตรวจคำตอบ">
         {forms.map((glyph) => (
-          <QuizGlyphAudio key={glyph} glyph={glyph} lesson={lesson} showText />
+          <LessonAudioRow key={glyph} clip={quizGlyphClip(glyph, lesson)} showText />
         ))}
       </div>
     );
@@ -158,28 +147,14 @@ function QuizAnswerAudio({
   return (
     <div className="quiz-answer-audio" aria-label="ฟังคำอ่านหลังตรวจคำตอบ">
       {form && correctReading && (
-        <span className="lesson-audio-line">
+        <LessonAudioRow clip={{ kind: "word", text: form, reading: correctReading, slug, quiz: true }}>
           <span lang="ja">{form}</span>
-          <LessonAudioButton
-            kind="word"
-            text={form}
-            reading={correctReading}
-            slug={slug}
-            quiz
-          />
-        </span>
+        </LessonAudioRow>
       )}
       {question.options.map(({ id, text }) => (
-        <span className="lesson-audio-line" key={id}>
+        <LessonAudioRow key={id} clip={{ kind: "quiz_choice", text, reading: text, slug, quiz: true }}>
           <span lang="ja">{text}</span>
-          <LessonAudioButton
-            kind="quiz_choice"
-            text={text}
-            reading={text}
-            slug={slug}
-            quiz
-          />
-        </span>
+        </LessonAudioRow>
       ))}
     </div>
   );
@@ -474,8 +449,8 @@ export function PracticeRound({
                   correct={result.correct}
                 >
                   <p><strong><AudioText text={question.prompt} slug={slug} quiz /></strong></p>
-                  <p>คำตอบของคุณ: <AudioText text={answer} slug={slug} quiz /></p>
-                  <p>คำตอบที่ตรงกับโจทย์: <AudioText text={result.correct_text} slug={slug} quiz /></p>
+                  <p><AudioText text={`คำตอบของคุณ: ${answer}`} slug={slug} quiz /></p>
+                  <p><AudioText text={`คำตอบที่ตรงกับโจทย์: ${result.correct_text}`} slug={slug} quiz /></p>
                   <p><AudioText text={result.explanation} slug={slug} quiz /></p>
                   {result.selection_explanation && (
                     <p><AudioText text={result.selection_explanation} slug={slug} quiz /></p>
@@ -545,10 +520,15 @@ export function PracticeRound({
             }[question.kind] || "ลองเลือกคำตอบ"}
           </span>
           <div className="quiz-prompt">
-            <h2 ref={heading} tabIndex={-1}>{question.prompt}</h2>
-            {promptGlyph && (result || canHearMeaningPrompt(question)) && (
-              <QuizGlyphAudio glyph={promptGlyph} lesson={audioLesson.data} onlyCharacter={!result} showText />
-            )}
+            <LessonAudioRow
+              as="div"
+              showText
+              clip={promptGlyph && (result || canHearMeaningPrompt(question))
+                ? quizGlyphClip(promptGlyph, audioLesson.data, !result)
+                : undefined}
+            >
+              <h2 ref={heading} tabIndex={-1}>{question.prompt}</h2>
+            </LessonAudioRow>
           </div>
           <form
             onSubmit={(e) => {
@@ -628,8 +608,11 @@ export function PracticeRound({
               <p><AudioText text={result.explanation} slug={slug} quiz /></p>
               {!result.correct && (
                 <p>
-                  <AudioText text={result.selection_explanation} slug={slug} quiz /> · คำตอบที่ตรงกับโจทย์:{" "}
-                  {result.correct_text}
+                  <AudioText
+                    text={`${result.selection_explanation} · คำตอบที่ตรงกับโจทย์: ${result.correct_text}`}
+                    slug={slug}
+                    quiz
+                  />
                 </p>
               )}
               <button

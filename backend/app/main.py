@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .config import Settings, get_settings
 from .database import create_database_engine, read_session
+from .learning_paths import router as learning_paths_router
 from .learning_routes import router as learning_router
 from .repository import DatabaseRepository
 from .sample_repository import SampleRepository
@@ -172,6 +173,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     application.include_router(router)
     application.include_router(learning_router)
+    application.include_router(learning_paths_router)
     return application
 
 

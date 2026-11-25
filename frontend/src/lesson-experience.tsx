@@ -37,7 +37,20 @@ import { Disclosure } from "./disclosure";
 import { LessonReturnContext, withLessonReturn } from "./lesson-return";
 import { PracticeRound } from "./pages/Quiz";
 import { LessonSaveProgress } from "./lesson-save-progress";
-import { LessonAudio, LessonAudioButton } from "./lesson-audio";
+import { LessonAudio, LessonAudioRow } from "./lesson-audio";
+
+type LessonMaterial = Pick<LessonDetail,
+  "slug" | "title_th" | "status" | "summary_th" | "introduction_th" |
+  "anchors" | "sections" | "kanjis" | "private_development"
+> & Partial<Pick<LessonDetail, "chapter">>;
+
+interface UnitNavigation {
+  pathname: string;
+  backHref: string;
+  backLabel: string;
+  previousHref?: string;
+  nextHref?: string;
+}
 
 function QuickCheck({ slug, active }: { slug: string; active: boolean }) {
   const q = useQuery({
@@ -74,11 +87,13 @@ function FullStage({
   lesson,
   current,
   onGuided,
+  isUnit,
 }: {
   stage: LessonStage;
-  lesson: LessonDetail;
+  lesson: LessonMaterial;
   current: boolean;
   onGuided: () => void;
+  isUnit: boolean;
 }) {
   return (
     <section
@@ -120,14 +135,11 @@ function FullStage({
                     {c.study?.role === "supplementary" && " · เลือกเรียนได้"}
                   </small>
                   {c.study?.reading.kind === "component" ? (
-                    <span className="lesson-audio-line">
+                    <LessonAudioRow clip={{
+                      kind: "component", text: c.study.reading.form, reading: c.study.reading.reading,
+                    }}>
                       <span lang="ja">{c.study.reading.reading}</span>
-                      <LessonAudioButton
-                        kind="component"
-                        text={c.study.reading.form}
-                        reading={c.study.reading.reading}
-                      />
-                    </span>
+                    </LessonAudioRow>
                   ) : (
                     <Reading
                       text={c.study?.reading.form || c.character}
@@ -145,7 +157,7 @@ function FullStage({
               kanjis={lesson.kanjis}
               slug={lesson.slug}
               showToc={false}
-              allowDetails={!!lesson.private_development}
+              allowDetails={isUnit || !!lesson.private_development}
             />
           </Disclosure>
         </>
@@ -159,7 +171,8 @@ function FullStage({
           kanjis={lesson.kanjis}
           slug={lesson.slug}
           showToc={false}
-          allowDetails={!!lesson.private_development}
+          allowDetails={isUnit || !!lesson.private_development}
+          showSentenceNotes={isUnit}
         />
       )}
       {!stage.sections.length && stage.phase !== "check" && (
@@ -171,13 +184,16 @@ function FullStage({
 
 export function LessonExperience({
   lesson,
-  catalog,
+  catalog = [],
+  unit,
 }: {
-  lesson: LessonDetail;
-  catalog: LessonMetadata[];
+  lesson: LessonMaterial;
+  catalog?: LessonMetadata[];
+  unit?: UnitNavigation;
 }) {
-  const stages = useMemo(() => deriveStages(lesson), [lesson]);
-  const saved = useRef(readPosition(lesson.slug)).current;
+  const isUnit = !!unit;
+  const stages = useMemo(() => deriveStages(lesson, { isUnit }), [lesson, isUnit]);
+  const saved = useRef(readPosition(lesson.slug, isUnit)).current;
   const [params] = useSearchParams(),
     location = useLocation(),
     navigate = useNavigate(),
@@ -195,15 +211,19 @@ export function LessonExperience({
         : legacy
           ? "full"
           : saved?.mode || "guided";
+  const savedItemStage = saved?.item === undefined ? undefined : stages.find((s) =>
+    s.cards.some((card) => card.content_id === saved.item),
+  );
   const stage = resolveStage(
     stages,
-    params.get("stage") || legacyStage?.id || saved?.stage || null,
+    params.get("stage") || legacyStage?.id || savedItemStage?.id || saved?.stage || null,
   );
   const index = stages.indexOf(stage),
     phaseIndex = phases.findIndex((p) => p.id === stage.phase);
-  const cardPositions = useRef<Record<string, number>>({
-    ...(saved?.card !== undefined ? { [saved.stage]: saved.card } : {}),
-  });
+  const cardPositions = useRef<Record<string, number>>(
+    savedItemStage ? { [savedItemStage.id]: savedItemStage.cards.findIndex((card) => card.content_id === saved?.item) }
+      : saved?.card !== undefined ? { [saved.stage]: saved.card } : {},
+  );
   const rawCard = params.get("card"),
     cardIndex = Math.max(
       0,
@@ -251,16 +271,17 @@ export function LessonExperience({
   const pending = useRef(true),
     pauseScroll = useRef(0),
     currentId = useRef(stage.id);
-  const pathname = `/lessons/${lesson.slug}`;
+  const pathname = unit?.pathname || `/lessons/${lesson.slug}`;
   const href = (id: string, view = mode) =>
     `${pathname}?mode=${view}&stage=${id}${cardPositions.current[id] ? `&card=${cardPositions.current[id]}` : ""}${view === "full" ? `#review-${id}` : ""}`;
   const returnTo = href(stage.id);
   const groups = useQuery({
     queryKey: ["comparison-groups"],
     queryFn: () => api<ComparisonGroup[]>("/learning/comparison-groups"),
+    enabled: !isUnit,
   });
   const chapterGroups =
-    groups.data?.filter((g) => g.slug === lesson.slug) || [];
+    isUnit ? [] : groups.data?.filter((g) => g.slug === lesson.slug) || [];
   const counts = {
     cards: stages.reduce((n, s) => n + s.cards.length, 0),
     words: stages.reduce(
@@ -328,8 +349,9 @@ export function LessonExperience({
       stage: stage.id,
       visited,
       card: cardIndex,
-    });
-  }, [lesson.slug, mode, stage.id, visited, cardIndex]);
+      item: stage.cards[cardIndex]?.content_id,
+    }, isUnit);
+  }, [lesson.slug, mode, stage, visited, cardIndex, isUnit]);
   useEffect(() => {
     if (!pending.current && mode !== "guided" && navigationType !== "POP")
       return;
@@ -402,20 +424,20 @@ export function LessonExperience({
       <div className={`hybrid-lesson mode-${mode}`}>
         <div className="hybrid-title">
           <div>
-            <Link className="text-link" to="/lessons">
+            <Link className="text-link" to={unit?.backHref || "/lessons"}>
               <ArrowLeft size={16} />
-              เส้นทางบทเรียน
+              {unit?.backLabel || "เส้นทางบทเรียน"}
             </Link>
             <p className="eyebrow">
-              บทที่ {String(lesson.chapter || 2).padStart(2, "0")} ·{" "}
-              {counts.cards} ตัวอักษร
+              {unit ? `หน่วยเรียน · ${counts.cards + counts.words + counts.sentences} รายการ`
+                : `บทที่ ${String(lesson.chapter || 2).padStart(2, "0")} · ${counts.cards} ตัวอักษร`}
             </p>
             <h1>
               {lesson.title_th}
               <span className="coral">。</span>
             </h1>
           </div>
-          <ChoicePicker
+          {!unit && <ChoicePicker
             label="เลือกบทเรียน"
             triggerLabel={`เปลี่ยนบท · ${lesson.chapter || 2}`}
             value={lesson.slug}
@@ -424,7 +446,7 @@ export function LessonExperience({
               label: `บท ${l.chapter} · ${l.title_th}`,
             }))}
             onChange={(slug) => navigate(`/lessons/${slug}`)}
-          />
+          />}
         </div>
         <div className="lesson-mode-row">
           <SegmentedControl
@@ -436,11 +458,14 @@ export function LessonExperience({
             ]}
             onChange={onMode}
           />
-          <Link className="text-link" to={quizHref}>
+          {!unit && <Link className="text-link" to={quizHref}>
             ไปแบบฝึกหัดได้ทันที
             <ArrowRight size={16} />
-          </Link>
-          {(mode === "full" || stage.phase === "review") && (
+          </Link>}
+          {unit?.previousHref && <Link className="text-link" to={unit.previousHref}>
+            <ArrowLeft size={16} /> หน่วยก่อนหน้า
+          </Link>}
+          {!unit && (mode === "full" || stage.phase === "review") && (
             <LessonSaveProgress slug={lesson.slug} />
           )}
         </div>
@@ -595,7 +620,7 @@ export function LessonExperience({
                           kanjis={lesson.kanjis}
                           slug={lesson.slug}
                           showToc={false}
-                          allowDetails={!!lesson.private_development}
+                          allowDetails={isUnit || !!lesson.private_development}
                         />
                         <div
                           className="discovery-glyphs"
@@ -625,7 +650,8 @@ export function LessonExperience({
                           )}
                         </div>
                         <p className="session-caption">
-                          ตำแหน่งเรียนจำไว้เฉพาะแท็บนี้ · เริ่มฝึกได้โดยไม่ต้องเรียนครบทุกช่วง
+                          {unit ? "ตำแหน่งเรียนจำไว้เฉพาะแท็บนี้"
+                            : "ตำแหน่งเรียนจำไว้เฉพาะแท็บนี้ · เริ่มฝึกได้โดยไม่ต้องเรียนครบทุกช่วง"}
                         </p>
                         <div className="hero-actions discovery-actions">
                           <button
@@ -713,10 +739,11 @@ export function LessonExperience({
                             kanjis={lesson.kanjis}
                             slug={lesson.slug}
                             showToc={false}
-                            allowDetails={!!lesson.private_development}
+                            allowDetails={isUnit || !!lesson.private_development}
                             focused={stage.phase === "learn"}
                             activeCharacter={stage.cards[cardIndex]?.character}
                             showAllCards={!!allCards[stage.id]}
+                            showSentenceNotes={isUnit}
                           />
                         )}
                         {stage.cards.length > 0 && (
@@ -727,6 +754,14 @@ export function LessonExperience({
                             <List size={17} />
                             ดูทุกกลุ่มและรายละเอียดในบท
                           </button>
+                        )}
+                        {isUnit && stage.cards.length >= 2 && (
+                          <Link className="text-link" to={withLessonReturn(
+                            `/compare?${new URLSearchParams({ characters: stage.cards.map((card) => card.character).join(",") })}`,
+                            returnTo,
+                          )}>
+                            <GitCompareArrows size={17} /> เปรียบเทียบคันจิในกลุ่มนี้
+                          </Link>
                         )}
                         {stage.cards.length > 0 &&
                           chapterGroups.some((g) =>
@@ -788,26 +823,26 @@ export function LessonExperience({
                                 <span key={k.character}>{k.character}</span>
                               ))}
                             </div>
-                            <p>
+                            {!unit && <p>
                               เลือกย้อนดูช่วงที่ยังสับสน หรือไปลองแบบฝึกหัดประจำบท
                               ผลแบบฝึกหัดบอกผลรอบนั้น ไม่ใช่การยืนยันว่าเรียนครบทุกช่วง
-                            </p>
+                            </p>}
                             <div className="hero-actions">
                               <button
                                 onClick={() =>
                                   go(
-                                    stages.find((s) => s.cards.length)?.id ||
+                                    stages.find((s) => s.cards.length || (isUnit && s.phase === "learn"))?.id ||
                                       "discover",
                                   )
                                 }
                               >
                                 <RotateCcw size={17} />
-                                กลับไปทวนกลุ่มตัวอักษร
+                                {unit ? "กลับไปทวนเนื้อหา" : "กลับไปทวนกลุ่มตัวอักษร"}
                               </button>
-                              <Link className="button primary" to={quizHref}>
+                              {!unit && <Link className="button primary" to={quizHref}>
                                 เริ่มแบบฝึกหัดประจำบท
                                 <ArrowRight size={17} />
-                              </Link>
+                              </Link>}
                             </div>
                             {next && (
                               <Link
@@ -829,10 +864,10 @@ export function LessonExperience({
               <div className="full-lesson">
                 <div className="full-mode-heading">
                   <h2>บทเรียนทั้งหมด · เลือกทวนได้ตามจังหวะ</h2>
-                  <p>
+                  {!unit && <p>
                     แถวสรุปแสดงรูป คำอ่าน และความหมาย
                     เปิดรายละเอียดเพื่อดูภาพจำและตัวอย่างครบทุกกลุ่ม
-                  </p>
+                  </p>}
                 </div>
                 {stages.map((s) => (
                   <FullStage
@@ -841,17 +876,18 @@ export function LessonExperience({
                     lesson={lesson}
                     current={s.id === stage.id}
                     onGuided={() => go(s.id, "guided")}
+                    isUnit={isUnit}
                   />
                 ))}
               </div>
             )}
             {/* Keep the optional checkpoint mounted when switching modes/stages. */}
-            <div hidden={mode !== "guided" || stage.phase !== "check"}>
+            {!unit && <div hidden={mode !== "guided" || stage.phase !== "check"}>
               <QuickCheck
                 slug={lesson.slug}
                 active={mode === "guided" && stage.phase === "check"}
               />
-            </div>
+            </div>}
           </div>
         </div>
         <nav className="learning-actions" aria-label="นำทางช่วงเรียน">
@@ -891,6 +927,11 @@ export function LessonExperience({
                 : `ถัดไป: ${phases.find((p) => p.id === stages[index + 1].phase)?.label}`}
               <ArrowRight size={18} />
             </button>
+          ) : unit ? (
+            <Link className="button primary" to={unit.nextHref || unit.backHref}>
+              {unit.nextHref ? "หน่วยถัดไป" : "กลับไปยังเส้นทาง"}
+              <ArrowRight size={18} />
+            </Link>
           ) : (
             <Link className="button primary" to={quizHref}>
               เริ่มฝึก
@@ -903,7 +944,8 @@ export function LessonExperience({
   );
   return (
     <LessonAudio
-      slug={lesson.slug}
+      slug={unit ? undefined : lesson.slug}
+      exactOnly={isUnit}
       enabled={
         lesson.status === "published" &&
         !lesson.private_development

@@ -21,7 +21,10 @@ export const phases: { id: Phase; label: string; hint: string }[] = [
 
 /** Read-only presentation derivation. Contiguous source order is retained;
  * each card and each non-card block is assigned once, never rewritten. */
-export function deriveStages(lesson: LessonDetail): LessonStage[] {
+export function deriveStages<T extends Pick<LessonDetail, "introduction_th" | "summary_th" | "sections" | "kanjis">>(
+  lesson: T,
+  { isUnit = false }: { isUnit?: boolean } = {},
+): LessonStage[] {
   const intro: LessonStage = {
     id: "discover",
     phase: "discover",
@@ -56,7 +59,9 @@ export function deriveStages(lesson: LessonDetail): LessonStage[] {
     id: "review",
     phase: "review",
     title: "ทวนสิ่งที่พบ แล้วเลือกฝึกต่อ",
-    focus: "กลับไปดูกลุ่มที่ยังสับสน หรือเริ่มแบบฝึกหัดประจำบทได้ทันที",
+    focus: isUnit
+      ? "ทวนคำและตัวอย่างที่เพิ่งเรียน"
+      : "กลับไปดูกลุ่มที่ยังสับสน หรือเริ่มแบบฝึกหัดประจำบทได้ทันที",
     sections: [],
     units: [],
     sourceSections: [],
@@ -73,12 +78,14 @@ export function deriveStages(lesson: LessonDetail): LessonStage[] {
             (block.cards.length - offset) / remainingGroups--,
           );
           const cards = block.cards.slice(offset, offset + size),
-            id = `learn-${learning.length + 1}`;
+            id = cards[0].content_id === undefined
+              ? `learn-${learning.length + 1}`
+              : `learn-item-${cards[0].content_id}`;
           learning.push({
             id,
             phase: "learn",
             title: `กลุ่ม ${learning.length + 1} · ${cards.map((c) => c.character).join(" · ")}`,
-            focus: `สังเกตรูป คำอ่าน และภาพช่วยจำของ ${cards.map((c) => c.character).join(" · ")}`,
+            focus: `${isUnit ? "สังเกตรูปและคำอ่านของ" : "สังเกตรูป คำอ่าน และภาพช่วยจำของ"} ${cards.map((c) => c.character).join(" · ")}`,
             cards,
             sections: [{ kind: "cards", blocks: [{ cards }] }],
             units: cards.map((_, i) => `${si}:${bi}:card:${offset + i}`),
@@ -145,7 +152,7 @@ export function deriveStages(lesson: LessonDetail): LessonStage[] {
     ...learning,
     ...(use.sections.length ? [use] : []),
     ...(connect.sections.length ? [connect] : []),
-    ...(lesson.kanjis.length ? [check] : []),
+    ...(!isUnit && lesson.kanjis.length ? [check] : []),
     review,
   ];
 }
@@ -169,11 +176,13 @@ export interface LessonPosition {
   stage: string;
   visited: string[];
   card?: number;
+  item?: number;
 }
-const key = (slug: string) => `kanji:lesson-position:v1:${slug}`;
-export function readPosition(slug: string): LessonPosition | null {
+const key = (slug: string, unit: boolean) =>
+  `kanji:${unit ? "unit" : "lesson"}-position:v1:${slug}`;
+export function readPosition(slug: string, unit = false): LessonPosition | null {
   try {
-    const p = JSON.parse(sessionStorage.getItem(key(slug)) || "null");
+    const p = JSON.parse(sessionStorage.getItem(key(slug, unit)) || "null");
     return p &&
       ["guided", "full"].includes(p.mode) &&
       typeof p.stage === "string" &&
@@ -185,15 +194,16 @@ export function readPosition(slug: string): LessonPosition | null {
           ...(Number.isInteger(p.card) && p.card >= 0 && p.card < 4
             ? { card: p.card }
             : {}),
+          ...(unit && Number.isSafeInteger(p.item) && p.item > 0 ? { item: p.item } : {}),
         }
       : null;
   } catch {
     return null;
   }
 }
-export function writePosition(slug: string, value: LessonPosition) {
+export function writePosition(slug: string, value: LessonPosition, unit = false) {
   try {
-    sessionStorage.setItem(key(slug), JSON.stringify(value));
+    sessionStorage.setItem(key(slug, unit), JSON.stringify(value));
   } catch {
     /* Storage restrictions never block learning. */
   }

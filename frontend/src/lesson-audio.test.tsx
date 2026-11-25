@@ -393,3 +393,19 @@ it("cancels rapid repeated clicks, allows retry after error, and stops playback 
     screen.queryByRole("button", { name: /ฟังเสียง|หยุดเสียง/ }),
   ).not.toBeInTheDocument();
 });
+
+it("groups ruby and the translation before the shared audio action and keeps status in the row", async () => {
+  await mount("use");
+  const button = await screen.findByRole("button", { name: /ฟังเสียง 山に行きます/ });
+  const row = button.parentElement!;
+  const copy = row.firstElementChild!;
+  expect(row).toHaveClass("lesson-audio-row");
+  expect(copy).toHaveClass("lesson-audio-copy");
+  expect(copy.querySelector("ruby rt")).toHaveTextContent("やまにいきます。");
+  expect(copy).toHaveTextContent("ไปภูเขา");
+  expect(copy.nextElementSibling).toBe(button);
+  fireEvent.click(button);
+  expect(within(row).getByRole("status")).toHaveTextContent("กำลังโหลดเสียง");
+  act(() => TestAudio.instances[0].onerror?.());
+  expect(within(row).getByRole("status")).toHaveTextContent("เล่นเสียงไม่ได้");
+});

@@ -34,9 +34,7 @@ function ReviewCardAudio({ character }: { character: string }) {
     queryFn: () => api<Kanji>(`/kanjis/${encodeURIComponent(character)}`, { anonymous: true }),
   });
   return data?.review_status === "published" ? (
-    <div className="lesson-audio-line">
-      <KanjiReadingList character={character} readings={[...new Set([...data.kunyomi, ...data.onyomi])]} />
-    </div>
+    <KanjiReadingList character={character} readings={[...data.kunyomi, ...data.onyomi]} />
   ) : null;
 }
 function syncValue(kind: string, value: object | null) {
@@ -258,8 +256,8 @@ function PersonalDashboard() {
                           <time dateTime={a.created_at}>{date.toLocaleString("th-TH")}</time>
                         </p>
                         {a.prompt && <p><strong><AudioText text={a.prompt} /></strong></p>}
-                        {a.answer && <p>คำตอบของคุณ: <AudioText text={a.answer} /></p>}
-                        {a.expected && <p>คำตอบที่ตรงกับโจทย์: <AudioText text={a.expected} /></p>}
+                        {a.answer && <p><AudioText text={`คำตอบของคุณ: ${a.answer}`} /></p>}
+                        {a.expected && <p><AudioText text={`คำตอบที่ตรงกับโจทย์: ${a.expected}`} /></p>}
                         {a.explanation && <p><AudioText text={a.explanation} /></p>}
                         {a.selection_explanation && <p><AudioText text={a.selection_explanation} /></p>}
                       </AnswerHistoryItem>

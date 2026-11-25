@@ -15,12 +15,14 @@ export function withLessonReturn(path: string, lesson: string) {
   );
 }
 export function safeLessonReturn(value: string | null, slug?: string) {
-  if (!value || !value.startsWith("/lessons/")) return null;
+  const lesson = /^\/lessons\/[a-z0-9-]+$/;
+  const unit = /^\/(?:categories|jlpt)\/[a-z0-9-]+\/units\/[a-z0-9-]+$/;
+  if (!value || !["/lessons/", "/categories/", "/jlpt/"].some((prefix) => value.startsWith(prefix))) return null;
   try {
     const u = new URL(value, "http://lesson.local");
     if (
       u.origin !== "http://lesson.local" ||
-      !/^\/lessons\/[a-z0-9-]+$/.test(u.pathname) ||
+      (!lesson.test(u.pathname) && !unit.test(u.pathname)) ||
       (slug && u.pathname !== `/lessons/${slug}`)
     )
       return null;

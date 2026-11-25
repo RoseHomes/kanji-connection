@@ -31,6 +31,10 @@ export default function Catalog() {
       <PageHeading eyebrow="THE LEARNING PATH" title="ทุกบท เชื่อมความเข้าใจ">
         <p>จากรูปที่คุ้นตา สู่คำที่ใช้ได้จริง เลือกจุดเริ่มต้นที่อยากรู้จัก</p>
       </PageHeading>
+      <nav className="learning-path-links" aria-label="เส้นทางการเรียนเพิ่มเติม">
+        <Link className="text-link" to="/categories">เรียนตามหมวด <ArrowUpRight size={16} /></Link>
+        <Link className="text-link" to="/jlpt">เตรียม JLPT <ArrowUpRight size={16} /></Link>
+      </nav>
       <div className="catalog-toolbar">
         <Chips
           label="เลือกกลุ่มบทเรียน"

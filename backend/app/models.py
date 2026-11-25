@@ -7,9 +7,11 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     Uuid,
     text,
@@ -242,6 +244,195 @@ class KanjiReading(Base):
     notes: Mapped[str] = mapped_column(String(1000), default="")
 
 
+class ExampleSentence(Base):
+    __tablename__ = "example_sentences"
+    __table_args__ = (
+        UniqueConstraint("text_ja", "reading"),
+        CheckConstraint(
+            "status <> 'published' OR (length(trim(text_ja)) > 0 AND length(trim(meaning_th)) > 0)",
+            name="ck_sentences_published_text",
+        ),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    text_ja: Mapped[str] = mapped_column(String(500))
+    reading: Mapped[str] = mapped_column(String(400), server_default="")
+    meaning_th: Mapped[str] = mapped_column(Text)
+    usage_notes_th: Mapped[str] = mapped_column(Text, server_default="")
+    status: Mapped[str] = mapped_column(String(30), server_default="draft")
+    access_tier: Mapped[str] = mapped_column(String(20), server_default="private")
+    provenance: Mapped[dict] = mapped_column(JSON, server_default="{}")
+
+
+class JLPTReferenceRelease(Base):
+    __tablename__ = "jlpt_reference_releases"
+    __table_args__ = (
+        UniqueConstraint("source_key", "version"),
+        CheckConstraint(
+            "length(trim(source_key)) > 0 AND length(trim(version)) > 0 "
+            "AND length(trim(source_url)) > 0 AND length(trim(license)) > 0 "
+            "AND length(trim(attribution)) > 0",
+            name="ck_jlpt_release_metadata",
+        ),
+        CheckConstraint("manifest_sha256 ~ '^[0-9a-f]{64}$'", name="ck_jlpt_manifest_hash").ddl_if(
+            dialect="postgresql"
+        ),
+        CheckConstraint(
+            "length(manifest_sha256) = 64 AND manifest_sha256 NOT GLOB '*[^0-9a-f]*'",
+            name="ck_jlpt_manifest_hash_sqlite",
+        ).ddl_if(dialect="sqlite"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_key: Mapped[str] = mapped_column(String(80))
+    version: Mapped[str] = mapped_column(String(120))
+    source_url: Mapped[str] = mapped_column(String(500))
+    license: Mapped[str] = mapped_column(String(120))
+    attribution: Mapped[str] = mapped_column(Text)
+    manifest_sha256: Mapped[str] = mapped_column(String(64))
+    manifest: Mapped[dict] = mapped_column(JSON)
+
+
+class JLPTAssignment(Base):
+    __tablename__ = "jlpt_assignments"
+    __table_args__ = (
+        UniqueConstraint("release_id", "reference_key"),
+        CheckConstraint("level BETWEEN 1 AND 5", name="ck_jlpt_assignment_level"),
+        CheckConstraint(
+            "(kanji_id IS NOT NULL) <> (vocabulary_id IS NOT NULL)",
+            name="ck_jlpt_assignment_target",
+        ),
+        Index("ix_jlpt_assignments_release_level", "release_id", "level"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    release_id: Mapped[int] = mapped_column(ForeignKey("jlpt_reference_releases.id"))
+    reference_key: Mapped[str] = mapped_column(String(200))
+    level: Mapped[int] = mapped_column(Integer)
+    kanji_id: Mapped[int | None] = mapped_column(ForeignKey("kanjis.id"))
+    vocabulary_id: Mapped[int | None] = mapped_column(ForeignKey("vocabularies.id"))
+    match_provenance: Mapped[dict] = mapped_column(JSON)
+
+
+def _slug_constraints(column, name):
+    return (
+        CheckConstraint(f"{column} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'", name=name).ddl_if(
+            dialect="postgresql"
+        ),
+        CheckConstraint(
+            f"length({column}) BETWEEN 1 AND 80 AND {column} NOT GLOB '*[^a-z0-9-]*' "
+            f"AND {column} NOT GLOB '-*' AND {column} NOT GLOB '*-' "
+            f"AND {column} NOT GLOB '*--*'",
+            name=f"{name}_sqlite",
+        ).ddl_if(dialect="sqlite"),
+    )
+
+
+class LearningPath(Base):
+    __tablename__ = "learning_paths"
+    __table_args__ = (
+        UniqueConstraint("kind", "slug"),
+        *_slug_constraints("slug", "ck_learning_path_slug"),
+        CheckConstraint(
+            "(kind = 'category' AND jlpt_level IS NULL AND jlpt_release_id IS NULL) "
+            "OR (kind = 'jlpt' AND jlpt_level IS NOT NULL AND jlpt_level BETWEEN 1 AND 5 "
+            "AND jlpt_release_id IS NOT NULL)",
+            name="ck_learning_path_kind_level",
+        ),
+        CheckConstraint("sort_order >= 0", name="ck_learning_path_order"),
+        Index(
+            "ix_learning_paths_visible_order", "kind", "status", "access_tier", "sort_order", "id"
+        ),
+        Index("ix_learning_paths_jlpt_release", "jlpt_release_id"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    slug: Mapped[str] = mapped_column(String(80))
+    title_th: Mapped[str] = mapped_column(String(300))
+    summary_th: Mapped[str] = mapped_column(Text, server_default="")
+    sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
+    status: Mapped[str] = mapped_column(String(30), server_default="draft")
+    access_tier: Mapped[str] = mapped_column(String(20), server_default="private")
+    jlpt_level: Mapped[int | None] = mapped_column(Integer)
+    jlpt_release_id: Mapped[int | None] = mapped_column(ForeignKey("jlpt_reference_releases.id"))
+
+
+class LearningUnit(Base):
+    __tablename__ = "learning_units"
+    __table_args__ = (
+        UniqueConstraint("path_id", "unit_key"),
+        UniqueConstraint("path_id", "id"),
+        *_slug_constraints("unit_key", "ck_learning_unit_key"),
+        CheckConstraint("sort_order >= 0", name="ck_learning_unit_order"),
+        Index("ix_learning_units_visible_order", "path_id", "status", "sort_order", "id"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    path_id: Mapped[int] = mapped_column(ForeignKey("learning_paths.id"))
+    unit_key: Mapped[str] = mapped_column(String(80))
+    title_th: Mapped[str] = mapped_column(String(300))
+    intro_th: Mapped[str] = mapped_column(Text, server_default="")
+    sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
+    status: Mapped[str] = mapped_column(String(30), server_default="draft")
+
+
+class LearningPathItem(Base):
+    __tablename__ = "learning_path_items"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["path_id", "unit_id"], ["learning_units.path_id", "learning_units.id"]
+        ),
+        CheckConstraint(
+            "CASE WHEN kanji_id IS NULL THEN 0 ELSE 1 END + "
+            "CASE WHEN vocabulary_id IS NULL THEN 0 ELSE 1 END + "
+            "CASE WHEN sentence_id IS NULL THEN 0 ELSE 1 END = 1",
+            name="ck_learning_path_item_target",
+        ),
+        CheckConstraint("sort_order >= 0", name="ck_learning_path_item_order"),
+        CheckConstraint(
+            "NOT required OR unit_id IS NOT NULL", name="ck_learning_path_item_required"
+        ),
+        Index("ix_learning_path_items_order", "path_id", "unit_id", "sort_order", "id"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    path_id: Mapped[int] = mapped_column(ForeignKey("learning_paths.id"))
+    unit_id: Mapped[int | None] = mapped_column(Integer)
+    kanji_id: Mapped[int | None] = mapped_column(ForeignKey("kanjis.id"))
+    vocabulary_id: Mapped[int | None] = mapped_column(ForeignKey("vocabularies.id"))
+    sentence_id: Mapped[int | None] = mapped_column(ForeignKey("example_sentences.id"))
+    sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
+    required: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    context_note_th: Mapped[str] = mapped_column(Text, server_default="")
+
+
+for _table, _scope, _targets in [
+    (JLPTAssignment, ("release_id", "level"), ("kanji_id", "vocabulary_id")),
+    (LearningPathItem, ("path_id",), ("kanji_id", "vocabulary_id", "sentence_id")),
+]:
+    for _target in _targets:
+        _predicate = text(f"{_target} IS NOT NULL")
+        _prefix = "jlpt_assignments" if _table is JLPTAssignment else "learning_path_items"
+        Index(
+            f"uq_{_prefix}_{_target}",
+            *(_table.__table__.c[c] for c in (*_scope, _target)),
+            unique=True,
+            postgresql_where=_predicate,
+            sqlite_where=_predicate,
+        )
+        Index(
+            f"ix_{_prefix}_{_target}",
+            _table.__table__.c[_target],
+            _table.__table__.c[_scope[0]],
+            postgresql_where=_predicate,
+            sqlite_where=_predicate,
+        )
+
+_jlpt_path = text("kind = 'jlpt'")
+Index(
+    "uq_learning_paths_jlpt_level",
+    LearningPath.jlpt_level,
+    unique=True,
+    postgresql_where=_jlpt_path,
+    sqlite_where=_jlpt_path,
+)
+
+
 # Shared editorial constraints are explicit in the generated migration as well.
 for _model, _field in [
     (KanjiRecord, "review_status"),
@@ -252,6 +443,9 @@ for _model, _field in [
     (LessonSection, "status"),
     (VisualAsset, "status"),
     (QuizQuestion, "status"),
+    (ExampleSentence, "status"),
+    (LearningPath, "status"),
+    (LearningUnit, "status"),
 ]:
     _model.__table__.append_constraint(
         CheckConstraint(
@@ -260,7 +454,7 @@ for _model, _field in [
         )
     )
 
-for _model in [KanjiRecord, LessonRecord, Vocabulary, LessonSection]:
+for _model in [KanjiRecord, LessonRecord, Vocabulary, LessonSection, ExampleSentence, LearningPath]:
     _model.__table__.append_constraint(
         CheckConstraint(
             "access_tier IN ('private', 'free', 'premium')",

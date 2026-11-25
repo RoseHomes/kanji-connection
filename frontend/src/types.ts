@@ -32,6 +32,7 @@ export interface LessonDetail extends Lesson {
 }
 
 export interface SourceCard {
+  content_id?: number;
   character: string;
   meaning_th: string;
   reading_example: string;

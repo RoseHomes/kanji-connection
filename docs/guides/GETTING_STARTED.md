@@ -51,6 +51,7 @@ enabled.
 | Public sample               | None                                                   | Independent sample cards and browser guest storage          |
 | Local account development   | Your own configured Supabase Auth                      | Ignored SQLite database; see account guide                  |
 | Private content preview     | Separately authorized private book inputs and identity | Local-only allowlist; never hosted publication              |
+| Category and JLPT preview   | Verified local book snapshot and publication receipt   | Temporary read-only SQLite mirror on loopback               |
 | Hosted database application | Approved database/Auth/environment values              | Publication-filtered PostgreSQL APIs; writes off by default |
 
 Only copy environment examples when no configured file already exists. Do not
@@ -58,6 +59,33 @@ replace working values. The examples choose database mode; that differs from the
 credential-free sample commands above. Use the
 [environment guide](ENVIRONMENT.md), [account guide](AUTH_AND_PROGRESS.md) and
 [database guide](DATABASE.md) for optional setup.
+
+### Category and JLPT preview
+
+With the existing local publication receipt in `private/publication-release/`
+and its matching SQLite snapshot in `private/editorial-preview/snapshots/`, run
+these commands from the project root on Windows:
+
+```powershell
+$env:CONTENT_SOURCE = 'sample'
+$env:ENABLE_USER_WRITES = 'false'
+.\.venv\Scripts\python.exe scripts/dev_server.py --learning-expansion
+```
+
+In a second terminal:
+
+```powershell
+Set-Location frontend
+$env:VITE_API_URL = 'http://127.0.0.1:8000'
+npm run dev
+```
+
+Open [Categories](http://127.0.0.1:5173/categories) or
+[JLPT](http://127.0.0.1:5173/jlpt). The fixture adds two category units and one
+N5 unit to a verified copy of the 30-chapter edition. N4–N1 show their reference
+counts while units are being prepared. The backend opens the copy read-only
+after setup. Audio uses the existing public Storage objects when the frontend
+has the project's public Supabase URL configured.
 
 ## Common problems
 

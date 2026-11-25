@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { useId } from "react";
+import { Fragment, useId } from "react";
 import { ArrowUpRight, Lightbulb, GitCompareArrows } from "lucide-react";
-import { AudioContentRow, KanjiCard, Reading, ReadingAudioRow } from "./components";
+import { KanjiCard, Reading, ReadingAudioRow } from "./components";
 import type { ComparisonItem, Kanji, LessonSection, SourceCard } from "./types";
 import { useLessonReturn, withLessonReturn } from "./lesson-return";
-import { AudioText, LessonAudioButton } from "./lesson-audio";
+import { AudioText, LessonAudioRow } from "./lesson-audio";
 const titles: Record<string, string> = {
   introduction: "สิ่งที่ควรสังเกต",
   cards: "ทำความรู้จักตัวอักษร",
@@ -25,20 +25,16 @@ function Node({ item }: { item: ComparisonItem }) {
       {item.kind === "component" && <small>ส่วนประกอบ</small>}
       {study && <small>{study.label_th}</small>}
       {reading && (
-        <AudioContentRow
-          label={study && kind !== "component"
-            ? <Reading text={study.form} reading={reading} />
+        <LessonAudioRow clip={{
+          kind: kind === "component" ? "component" : kind === "word" ? "word" : "kanji",
+          text: study?.form ?? item.kanji, reading,
+        }}>
+          {study && kind !== "component" ? <Reading text={study.form} reading={reading} />
             : <small lang="ja">{reading}</small>}
-          audio={
-            <LessonAudioButton
-              kind={kind === "component" ? "component" : kind === "word" ? "word" : "kanji"}
-              text={study?.form ?? item.kanji}
-              reading={reading}
-            />
-          }
-        />
+          <strong>{item.meaning_th || item.label_th}</strong>
+        </LessonAudioRow>
       )}
-      <strong>{item.meaning_th || item.label_th}</strong>
+      {!reading && <strong>{item.meaning_th || item.label_th}</strong>}
     </div>
   );
 }
@@ -51,6 +47,7 @@ export function LessonSections({
   allowDetails = false,
   activeCharacter,
   showAllCards = false,
+  showSentenceNotes = false,
 }: {
   sections: LessonSection[];
   kanjis: Kanji[];
@@ -60,6 +57,7 @@ export function LessonSections({
   allowDetails?: boolean;
   activeCharacter?: string;
   showAllCards?: boolean;
+  showSentenceNotes?: boolean;
 }) {
   const returnTo = useLessonReturn();
   const uid = useId();
@@ -167,10 +165,10 @@ export function LessonSections({
                     <article className="comparison-pair" key={p}>
                       <div className="pair-characters">
                         {pair.map((s, n) => (
-                          <div className="pair-endpoint" key={s.kanji}>
-                            {n > 0 && <span className="pair-versus">↔</span>}
+                          <Fragment key={s.kanji}>
+                            {n > 0 && <span className="pair-versus" aria-hidden="true">↔</span>}
                             <Node item={s} />
-                          </div>
+                          </Fragment>
                         ))}
                       </div>
                       <Link className="text-link" to={withLessonReturn(
@@ -261,6 +259,7 @@ export function LessonSections({
                         <ReadingAudioRow text={s.text} reading={s.reading} kind="sentence">
                           <p>{s.meaning_th}</p>
                         </ReadingAudioRow>
+                        {showSentenceNotes && s.note_th && <p className="reading-scope"><AudioText text={s.note_th} /></p>}
                         {s.source_url && (
                           <details>
                             <summary>แหล่งเรียนรู้เพิ่มเติม</summary>

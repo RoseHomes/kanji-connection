@@ -161,9 +161,10 @@ class DatabaseRepository:
             sections=lesson_sections(self.session, row.id, False, "sample" in self.visible),
         )
 
-    def kanjis(self, q="", offset=0, limit=30):
+    def kanjis(self, q="", offset=0, limit=30, *, target_filters=()):
         query = select(KanjiRecord).where(
-            KanjiRecord.review_status.in_(self.visible), KanjiRecord.access_tier == "free"
+            KanjiRecord.review_status.in_(self.visible), KanjiRecord.access_tier == "free",
+            *(KanjiRecord.id.in_(ids) for ids in target_filters),
         )
         if q:
             component_match = (

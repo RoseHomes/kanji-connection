@@ -35,6 +35,15 @@ const Review = lazy(() => import("./pages/Review"));
 const Account = lazy(() => import("./pages/Account"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Quiz = lazy(() => import("./pages/Quiz"));
+const LearningPathList = lazy(() =>
+  import("./pages/LearningPaths").then((m) => ({ default: m.LearningPathList })),
+);
+const LearningPathPage = lazy(() =>
+  import("./pages/LearningPaths").then((m) => ({ default: m.LearningPathPage })),
+);
+const LearningUnitPage = lazy(() =>
+  import("./pages/LearningPaths").then((m) => ({ default: m.LearningUnitPage })),
+);
 const client = new QueryClient({
   defaultOptions: { queries: { staleTime: 60000, retry: 1 } },
 });
@@ -48,6 +57,8 @@ function App() {
     document.getElementById("main")?.focus({ preventScroll: true });
     const labels: Record<string, string> = {
       lessons: "บทเรียน",
+      categories: "เรียนตามหมวด",
+      jlpt: "เตรียม JLPT",
       explore: "สำรวจคันจิ",
       compare: "เปรียบเทียบ",
       review: "ทบทวน",
@@ -97,6 +108,8 @@ function App() {
           onClick={() => setMenuOpen(false)}
         >
           <NavLink to="/lessons">บทเรียน</NavLink>
+          <NavLink to="/categories">เรียนตามหมวด</NavLink>
+          <NavLink to="/jlpt">JLPT</NavLink>
           <NavLink to="/explore">สำรวจคันจิ</NavLink>
           <NavLink to="/compare">เปรียบเทียบ</NavLink>
           <NavLink to="/quiz">แบบฝึกหัด</NavLink>
@@ -123,6 +136,24 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/lessons" element={<Catalog />} />
               <Route path="/lessons/:slug" element={<Lesson />} />
+              <Route
+                path="/categories"
+                element={<LearningPathList kind="category" />}
+              />
+              <Route
+                path="/categories/:slug"
+                element={<LearningPathPage kind="category" />}
+              />
+              <Route
+                path="/categories/:slug/units/:unitKey"
+                element={<LearningUnitPage kind="category" />}
+              />
+              <Route path="/jlpt" element={<LearningPathList kind="jlpt" />} />
+              <Route path="/jlpt/:slug" element={<LearningPathPage kind="jlpt" />} />
+              <Route
+                path="/jlpt/:slug/units/:unitKey"
+                element={<LearningUnitPage kind="jlpt" />}
+              />
               <Route path="/explore" element={<Explorer />} />
               <Route path="/explore/:character" element={<KanjiDetail />} />
               <Route path="/compare" element={<Compare />} />

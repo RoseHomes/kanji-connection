@@ -40,6 +40,15 @@ def create_database_engine(settings: Settings | None = None, *, migration: bool 
 
 
 def read_session(request: Request):
+    yield from _read_session(request, "SET TRANSACTION READ ONLY")
+
+
+def publication_read_session(request: Request):
+    # Path summaries, memberships and canonical details share one publication snapshot.
+    yield from _read_session(request, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+
+
+def _read_session(request: Request, transaction_mode: str):
     settings = request.app.state.settings
     if settings.content_source == "sample":
         yield None
@@ -51,7 +60,7 @@ def read_session(request: Request):
         try:
             # Public routes cannot write even if a future repository accidentally does so.
             if engine.dialect.name == "postgresql":
-                session.execute(text("SET TRANSACTION READ ONLY"))
+                session.execute(text(transaction_mode))
                 session.execute(
                     text("SELECT set_config('statement_timeout', :timeout, true)"),
                     {"timeout": str(settings.database_statement_timeout_ms)},

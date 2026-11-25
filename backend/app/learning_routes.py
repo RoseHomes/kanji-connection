@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from .auth import CurrentUser, OptionalUser
 from .content_views import development_card, lesson_sections
-from .database import read_session
+from .database import publication_read_session, read_session
 from .learning import Learning, grade_sample, public_lesson, sample_questions
+from .learning_paths import scoped_kanji_ids
 from .learning_schema import (
     AnswerInput,
     ChoiceAttemptInput,
@@ -174,11 +175,25 @@ def learning_catalog(
 def learning_kanjis(
     request: Request,
     user: OptionalUser,
-    db: ReadSession,
+    db: Annotated[Session | None, Depends(publication_read_session)],
     q: str = Query("", max_length=100),
     offset: int = Query(0, ge=0),
     limit: int = Query(30, ge=1, le=100),
+    category: str | None = Query(None, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$", max_length=80),
+    jlpt: str | None = Query(None, pattern=r"^[Nn][1-5]$"),
+    include_prerequisites: bool = False,
 ):
+    if include_prerequisites and not jlpt:
+        raise HTTPException(422, "ระบุระดับ JLPT ก่อนรวมระดับพื้นฐานกว่า")
+    if category or jlpt:
+        if db is None:
+            return []
+        filters = []
+        if category:
+            filters.append(scoped_kanji_ids("category", category))
+        if jlpt:
+            filters.append(scoped_kanji_ids("jlpt", jlpt.lower(), include_prerequisites))
+        return DatabaseRepository(db).kanjis(q=q, offset=offset, limit=limit, target_filters=filters)
     if db is None:
         return SampleRepository().kanjis(q=q, offset=offset, limit=limit)
     service = Learning(db, request.app.state.settings, user)

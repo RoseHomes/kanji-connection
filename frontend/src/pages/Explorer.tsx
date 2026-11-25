@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { KanjiReadingList } from "../lesson-audio";
 import { Search, ArrowUpRight } from "lucide-react";
 import { api } from "../api";
@@ -10,6 +10,17 @@ import { PageHeading, Chips } from "../ui";
 import { learningGroups, chapterGroup } from "../presentation-types";
 import { ChoicePicker } from "../selection-controls";
 export default function Explorer() {
+  const [params] = useSearchParams();
+  const scope = new URLSearchParams();
+  for (const key of ["category", "jlpt", "include_prerequisites"]) {
+    const value = params.get(key);
+    if (value) scope.set(key, value);
+  }
+  return <ExplorerContent key={scope.toString()} scope={scope} />;
+}
+
+function ExplorerContent({ scope }: { scope: URLSearchParams }) {
+  const pathScoped = scope.has("category") || scope.has("jlpt");
   const [category, setCategory] = useState("all");
   const [slug, setSlug] = useState("");
   const [q, setQ] = useState("");
@@ -17,6 +28,7 @@ export default function Explorer() {
   const catalog = useQuery({
     queryKey: ["learner-catalog"],
     queryFn: () => api<Lesson[]>("/learning/catalog"),
+    enabled: !pathScoped,
   });
   const chapters =
     catalog.data?.filter(
@@ -29,10 +41,10 @@ export default function Explorer() {
         ? slug
         : chapters[0]?.slug || "";
   const cards = useQuery({
-    queryKey: ["explorer", q, offset],
+    queryKey: ["explorer", q, offset, scope.toString()],
     queryFn: () =>
       api<Kanji[]>(
-        `/learning/kanjis?q=${encodeURIComponent(q)}&offset=${offset}&limit=31`,
+        `/learning/kanjis?q=${encodeURIComponent(q)}&offset=${offset}&limit=31&${scope}`,
       ),
     enabled: !activeSlug && category === "all",
   });
@@ -57,7 +69,12 @@ export default function Explorer() {
       <PageHeading eyebrow="A WORLD OF CONNECTIONS" title="เริ่มรู้จัก ทีละตัว">
         <p>เลือกหมวดหรือบทที่สนใจ แล้วเปิดดูตัวอักษรที่อยากรู้จักเพิ่ม</p>
       </PageHeading>
-      <Chips
+      {pathScoped ? <div className="learning-path-links">
+        <Link className="text-link" to={scope.has("jlpt") ? `/jlpt/${scope.get("jlpt")}` : `/categories/${scope.get("category")}`}>
+          กลับไปยังเส้นทาง <ArrowUpRight size={16} />
+        </Link>
+        <Link className="text-link" to="/explore">สำรวจคันจิทั้งหมด <ArrowUpRight size={16} /></Link>
+      </div> : <Chips
         label="หมวดคันจิ"
         items={learningGroups}
         value={category}
@@ -72,9 +89,9 @@ export default function Explorer() {
           setQ("");
           setOffset(0);
         }}
-      />
+      />}
       <div className="explorer-toolbar">
-        <ChoicePicker
+        {!pathScoped && <ChoicePicker
           label="เลือกบทเรียนสำหรับสำรวจ"
           value={activeSlug || "all-chapters"}
           options={[
@@ -91,7 +108,7 @@ export default function Explorer() {
             setQ("");
             setOffset(0);
           }}
-        />
+        />}
         <label className="search-box">
           <Search size={19} />
           <span className="sr-only">ค้นหาเพิ่มเติม (ไม่จำเป็น)</span>
@@ -140,7 +157,7 @@ export default function Explorer() {
       {!loading && !data?.length && (
         <EmptyState title="ยังไม่พบตัวอักษรในชุดนี้">
           <p>ลองเลือกบทอื่นหรือล้างคำค้น ไม่ต้องพิมพ์ภาษาญี่ปุ่นก็สำรวจได้</p>
-          <button
+          {pathScoped ? <Link className="button" to="/explore">ดูทั้งหมด</Link> : <button
             onClick={() => {
               setQ("");
               setSlug("");
@@ -148,7 +165,7 @@ export default function Explorer() {
             }}
           >
             ดูทั้งหมด
-          </button>
+          </button>}
         </EmptyState>
       )}
       {!activeSlug && !scopedEmpty && (

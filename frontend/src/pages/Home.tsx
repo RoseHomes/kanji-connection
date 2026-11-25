@@ -14,7 +14,7 @@ import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { api } from "../api";
 import type { Lesson } from "../types";
 import type { ComparisonGroup } from "../presentation-types";
-import { ComparisonReading, DataState, EmptyState, Reading } from "../components";
+import { ComparisonReading, DataState, EmptyState, ReadingAudioRow } from "../components";
 import { Reveal } from "../ui";
 export default function Home() {
   const reduce = useReducedMotion();
@@ -62,6 +62,10 @@ export default function Home() {
           <p className="hero-note">
             <CircleCheck size={16} /> ไม่ต้องมีแป้นญี่ปุ่น · ฝึกได้โดยไม่ต้องเข้าสู่ระบบ
           </p>
+          <nav className="learning-path-links" aria-label="เลือกเส้นทางการเรียน">
+            <Link className="text-link" to="/categories">เรียนตามหมวด <ArrowUpRight size={16} /></Link>
+            <Link className="text-link" to="/jlpt">เตรียม JLPT <ArrowUpRight size={16} /></Link>
+          </nav>
         </Reveal>
         <Reveal className="hero-art">
           <div className="art-caption">
@@ -118,8 +122,9 @@ export default function Home() {
             />
           ) : (
             <div className="hero-empty">
-              <Reading text="つながる" reading="つながる" audioKind="word" />
-              <p>ทุกความเข้าใจ เริ่มจากการสังเกต</p>
+              <ReadingAudioRow text="つながる" reading="つながる" kind="word">
+                <p>ทุกความเข้าใจ เริ่มจากการสังเกต</p>
+              </ReadingAudioRow>
               <small>ชุดเรียนรู้จะแสดงเมื่อมีบทเรียนที่เข้าถึงได้</small>
             </div>
           )}

@@ -4,15 +4,15 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import UUID
 
 import uvicorn
 from sqlalchemy import create_engine, event, select
+from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
-from sqlalchemy.orm import Session
-
 from app.book_bundle import Bundle
 from app.book_import import apply_bundle
 from app.catalog import SAMPLES
@@ -26,9 +26,33 @@ from app.seed import seed
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dev-user", type=UUID, action="append", default=[])
-    parser.add_argument("--private-book", action="store_true")
+    editions = parser.add_mutually_exclusive_group()
+    editions.add_argument("--private-book", action="store_true")
+    editions.add_argument("--learning-expansion", action="store_true")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
+    if args.learning_expansion:
+        if args.dev_user:
+            parser.error("--learning-expansion runs as a read-only public preview")
+        from learning_expansion_fixture import development_engine
+
+        with TemporaryDirectory(prefix="kanji-expansion-") as folder:
+            engine = development_engine(Path(folder))
+            try:
+                settings = Settings(
+                    _env_file=None,
+                    content_source="database",
+                    enable_user_writes=False,
+                    database_url=None,
+                    migration_database_url=None,
+                    development_user_ids=[],
+                    expose_samples=False,
+                )
+                print("Learning expansion fixture · local read-only book mirror", flush=True)
+                uvicorn.run(create_app(settings, engine), host="127.0.0.1", port=args.port)
+            finally:
+                engine.dispose()
+        return
     if args.private_book and not args.dev_user:
         parser.error("--private-book requires at least one explicit --dev-user UUID")
     folder = ROOT / "private/development"

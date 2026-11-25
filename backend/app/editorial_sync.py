@@ -22,11 +22,10 @@ PROTECTED = {"status", "review_status", "access_tier", "catalog_visible"}
 TABLES = {
     t.name: t
     for t in Base.metadata.sorted_tables
-    if t.name
-    not in {
-        "user_progress",
-        "quiz_attempts",
-        "review_items",
+    # Keep the book edition digest and publication scope fixed as the catalog grows.
+    if t.name in ALLOWED.keys() | {
+        "kanji_components", "lesson_kanjis", "lesson_vocabularies",
+        "visual_assets", "vocabulary_kanjis",
     }
 }
 

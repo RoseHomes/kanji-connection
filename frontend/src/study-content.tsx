@@ -1,7 +1,7 @@
 import { Reading, ReadingAudioRow } from "./components";
 import type { SourceCard } from "./types";
 import { Disclosure } from "./disclosure";
-import { AudioText, LessonAudioButton } from "./lesson-audio";
+import { AudioText, LessonAudioRow } from "./lesson-audio";
 
 export function StudyContent({
   card,
@@ -26,14 +26,9 @@ export function StudyContent({
       <div className="study-reading" data-reading-kind={study.reading.kind}>
         <small>{study.reading.label_th}</small>
         {study.reading.kind === "component" ? (
-          <p className="lesson-audio-line">
+          <LessonAudioRow clip={{ kind: "component", text: study.reading.form, reading: study.reading.reading }}>
             <span lang="ja">{study.reading.reading}</span>
-            <LessonAudioButton
-              kind="component"
-              text={study.reading.form}
-              reading={study.reading.reading}
-            />
-          </p>
+          </LessonAudioRow>
         ) : (
           <Reading
             text={study.reading.form}

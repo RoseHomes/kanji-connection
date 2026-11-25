@@ -9,7 +9,7 @@ import {
   AudioText,
   KanjiAudioReadings,
   KanjiReadingList,
-  LessonAudioButton,
+  LessonAudioRow,
   type LessonAudioKind,
 } from "./lesson-audio";
 export function DataState({
@@ -73,34 +73,13 @@ export function Reading({ text, reading, audioKind, slug }: {
     <span lang="ja">{text}</span>
   );
   return audioKind ? (
-    <span className="lesson-audio-line">
+    <LessonAudioRow clip={{ kind: audioKind, text, reading, slug }}>
       {label}
-      <LessonAudioButton kind={audioKind} text={text} reading={reading} slug={slug} />
-    </span>
+    </LessonAudioRow>
   ) : (
     label
   );
 }
-export function AudioContentRow({
-  label,
-  children,
-  audio,
-}: {
-  label: ReactNode;
-  children?: ReactNode;
-  audio: ReactNode;
-}) {
-  return (
-    <>
-      <span className="lesson-audio-line">
-        {label}
-        {audio}
-      </span>
-      {children}
-    </>
-  );
-}
-
 export function ReadingAudioRow({ text, reading, kind, slug, children }: {
   text: string;
   reading?: string;
@@ -109,12 +88,10 @@ export function ReadingAudioRow({ text, reading, kind, slug, children }: {
   children?: ReactNode;
 }) {
   return (
-    <AudioContentRow
-      label={<Reading text={text} reading={reading} />}
-      audio={<LessonAudioButton kind={kind} text={text} reading={reading} slug={slug} />}
-    >
+    <LessonAudioRow as="div" clip={{ kind, text, reading, slug }}>
+      <Reading text={text} reading={reading} />
       {children}
-    </AudioContentRow>
+    </LessonAudioRow>
   );
 }
 
@@ -126,20 +103,14 @@ export function ComparisonReading({ item, slug, children }: {
   const { reading } = item;
   if (reading.kind === "component") {
     return (
-      <AudioContentRow
-        label={<span lang="ja">{reading.reading}</span>}
-        audio={
-          <LessonAudioButton
-            kind="component"
-            text={reading.form || item.character}
-            reading={reading.reading}
-            slug={slug}
-            fallbackKind={reading.form ? undefined : "kanji"}
-          />
-        }
+      <LessonAudioRow as="div" clip={{
+        kind: "component", text: reading.form || item.character,
+        reading: reading.reading, slug, fallbackKind: reading.form ? undefined : "kanji",
+      }}
       >
+        <span lang="ja">{reading.reading}</span>
         {children}
-      </AudioContentRow>
+      </LessonAudioRow>
     );
   }
   return (
@@ -235,7 +206,8 @@ export function KanjiCard({
       {!source?.study && !!item.kunyomi.length && <p><KanjiReadingList character={item.character} readings={item.kunyomi} /></p>}
       {!source?.study && (
         <small>
-          音 <KanjiReadingList character={item.character} readings={item.onyomi} /> ·{" "}
+          <span lang="ja">音</span>
+          <KanjiReadingList character={item.character} readings={item.onyomi} />
           {item.strokes === null ? "ยังไม่ระบุจำนวนขีด" : `${item.strokes} ขีด`}
         </small>
       )}
@@ -252,10 +224,9 @@ export function KanjiCard({
       {source && !source.study && (
         <div className="card-example">
           <small>ตัวอย่างคำที่ใช้ตัวอักษรนี้</small>
-          <p className="lesson-audio-line">
+          <p><LessonAudioRow clip={example ? { kind: "word", text: example[1], reading: example[2] } : undefined}>
             <span lang="ja">{source.example}</span>
-            {example && <LessonAudioButton kind="word" text={example[1]} reading={example[2]} />}
-          </p>
+          </LessonAudioRow></p>
           <p><AudioText text={source.memory_note} /></p>
         </div>
       )}
