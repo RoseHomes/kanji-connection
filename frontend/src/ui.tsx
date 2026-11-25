@@ -31,7 +31,7 @@ export function PageHeading({
   children?: ReactNode;
 }) {
   return (
-    <header className="page-heading">
+    <header className="page-heading content-stack">
       <p className="eyebrow">
         <Sparkles size={15} />
         {eyebrow}
@@ -40,7 +40,7 @@ export function PageHeading({
         {title}
         <span className="coral">。</span>
       </h1>
-      {children && <div className="lead">{children}</div>}
+      {children && <div className="lead content-stack">{children}</div>}
     </header>
   );
 }

@@ -12,6 +12,15 @@ import {
   LessonAudioRow,
   type LessonAudioKind,
 } from "./lesson-audio";
+
+export function LoadingState({ children = "กำลังโหลดข้อมูล…" }: { children?: ReactNode }) {
+  return (
+    <p className="notice" role="status">
+      {children}
+    </p>
+  );
+}
+
 export function DataState({
   loading,
   error,
@@ -21,22 +30,19 @@ export function DataState({
   error: Error | null;
   retry: () => void;
 }) {
-  if (loading && !error)
-    return (
-      <p className="notice" role="status">
-        กำลังโหลดข้อมูล…
-      </p>
-    );
+  if (loading && !error) return <LoadingState />;
   if (error)
     return (
-      <div className="notice" role="alert">
+      <div className="notice content-stack" role="alert">
         <p>{error.message}</p>
-        <button onClick={retry}>
-          <RotateCcw size={16} /> ลองใหม่
-        </button>
-        <Link className="text-link" to="/lessons">
-          ดูบทเรียนที่เข้าถึงได้
-        </Link>
+        <div className="action-group">
+          <button type="button" onClick={retry}>
+            <RotateCcw size={16} /> ลองใหม่
+          </button>
+          <Link className="text-link" to="/lessons">
+            ดูบทเรียนที่เข้าถึงได้
+          </Link>
+        </div>
         <small>ลองโหลดใหม่ หรือกลับมาอีกครั้งเมื่อการเชื่อมต่อพร้อม</small>
       </div>
     );
@@ -135,7 +141,7 @@ export function AccountGate({
 }) {
   return (
     <div className="page section gate-page">
-      <div className="access-card">
+      <div className="access-card content-stack">
         <span className="icon-tile">
           <LockKeyhole size={24} />
         </span>
@@ -143,7 +149,7 @@ export function AccountGate({
         <h1>{title}</h1>
         <p className="lead">{description}</p>
         <p>บทเรียน คันจิ และแบบฝึกหัดที่เผยแพร่แล้ว เปิดให้เรียนได้โดยไม่ต้องมีบัญชี</p>
-        <div className="hero-actions">
+        <div className="action-group">
           <Link className="button primary" to="/account">
             เข้าสู่ระบบ <ArrowRight size={17} />
           </Link>
@@ -158,17 +164,23 @@ export function AccountGate({
 export function EmptyState({
   title,
   children,
+  actions,
 }: {
   title: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
 }) {
+  const compact = !children && !actions;
   return (
-    <div className="empty-state" role="status">
-      <span className="icon-tile">
+    <div className={`empty-state ${compact ? "empty-state-compact" : "content-stack"}`}>
+      <span className="icon-tile" aria-hidden="true">
         <BookOpen size={25} />
       </span>
-      <h2>{title}</h2>
-      <div>{children}</div>
+      <div className="content-stack" role="status">
+        <h2>{title}</h2>
+        {children}
+      </div>
+      {actions && <div className="action-group">{actions}</div>}
     </div>
   );
 }

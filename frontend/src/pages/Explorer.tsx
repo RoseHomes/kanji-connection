@@ -155,17 +155,23 @@ function ExplorerContent({ scope }: { scope: URLSearchParams }) {
         ))}
       </div>
       {!loading && !data?.length && (
-        <EmptyState title="ยังไม่พบตัวอักษรในชุดนี้">
+        <EmptyState
+          title="ยังไม่พบตัวอักษรในชุดนี้"
+          actions={pathScoped ? (
+            <Link className="button" to="/explore">ดูทั้งหมด</Link>
+          ) : (
+            <button
+              onClick={() => {
+                setQ("");
+                setSlug("");
+                setCategory("all");
+              }}
+            >
+              ดูทั้งหมด
+            </button>
+          )}
+        >
           <p>ลองเลือกบทอื่นหรือล้างคำค้น ไม่ต้องพิมพ์ภาษาญี่ปุ่นก็สำรวจได้</p>
-          {pathScoped ? <Link className="button" to="/explore">ดูทั้งหมด</Link> : <button
-            onClick={() => {
-              setQ("");
-              setSlug("");
-              setCategory("all");
-            }}
-          >
-            ดูทั้งหมด
-          </button>}
         </EmptyState>
       )}
       {!activeSlug && !scopedEmpty && (

@@ -46,14 +46,17 @@ def apply_bundle(session: Session, bundle: Bundle):
             raise ValueError("Book content must remain private")
         if "catalog_visible" in columns and values.get("catalog_visible") is not False:
             raise ValueError("Book lessons cannot be catalog-visible")
+    return insert_rows(session, bundle.operations)
+
+
+def insert_rows(session: Session, operations):
+    """Resolve and insert a caller-validated natural-key plan without committing."""
     inserted = {}
     skipped = {}
     conflicts = []
     cache = {}
-    operations = sorted(
-        bundle.operations,
-        key=lambda op: [t.name for t in Base.metadata.sorted_tables].index(op["table"]),
-    )
+    order = {table.name: index for index, table in enumerate(Base.metadata.sorted_tables)}
+    operations = sorted(operations, key=lambda op: order[op["table"]])
 
     def resolve(value):
         if not isinstance(value, dict) or "$ref" not in value:

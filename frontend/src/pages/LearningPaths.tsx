@@ -188,9 +188,9 @@ export function LearningPathPage({ kind }: { kind: PathKind }) {
             ระดับนี้ใช้เป็นแนวทางเตรียมสอบ
           </p>
           <p className="path-reference-meta">
-            <a href={reference.source_url}>{reference.attribution}</a>
+            <a className="inline-link" href={reference.source_url}>{reference.attribution}</a>
             {reference.license === "CC BY-SA 4.0" ? (
-              <a href="https://creativecommons.org/licenses/by-sa/4.0/">
+              <a className="inline-link" href="https://creativecommons.org/licenses/by-sa/4.0/">
                 {reference.license}
               </a>
             ) : (
@@ -258,7 +258,7 @@ export function LearningPathPage({ kind }: { kind: PathKind }) {
                 }
               />
               <div className="path-filter-fields">
-                <label className="path-field path-field-search">
+                <label className="form-field path-field path-field-search">
                   <span>ค้นหาในเส้นทาง</span>
                   <input
                     type="search"
@@ -269,7 +269,7 @@ export function LearningPathPage({ kind }: { kind: PathKind }) {
                 </label>
                 {kind === "jlpt" && (
                   <>
-                    <label className="path-field">
+                    <label className="form-field path-field">
                       <span>เรียงตาม</span>
                       <select
                         value={sort}

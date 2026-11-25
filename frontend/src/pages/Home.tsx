@@ -188,11 +188,15 @@ export default function Home() {
           retry={() => void lessons.refetch()}
         />
         {lessons.data?.length === 0 && (
-          <EmptyState title="บทเรียนสาธารณะกำลังเตรียมพร้อม">
+          <EmptyState
+            title="บทเรียนสาธารณะกำลังเตรียมพร้อม"
+            actions={
+              <Link to="/explore" className="button secondary">
+                สำรวจเนื้อหาที่พร้อมเรียน
+              </Link>
+            }
+          >
             <p>เมื่อบทเรียนได้รับอนุมัติแล้ว คุณจะเริ่มเรียนได้ที่นี่โดยไม่ต้องสมัครบัญชี</p>
-            <Link to="/explore" className="button secondary">
-              สำรวจเนื้อหาที่พร้อมเรียน
-            </Link>
           </EmptyState>
         )}
         <div className="lesson-grid">

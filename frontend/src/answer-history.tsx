@@ -37,8 +37,10 @@ function AnswerDetails({
       }}
     >
       <header>
-        <h3 id={titleId}>{title}</h3>
-        {status}
+        <div className="answer-details-heading">
+          <h3 id={titleId}>{title}</h3>
+          {status}
+        </div>
         <button
           type="button"
           className="history-icon-button"
@@ -49,7 +51,7 @@ function AnswerDetails({
           <X size={18} aria-hidden="true" />
         </button>
       </header>
-      <div className="answer-details-body">{children}</div>
+      <div className="answer-details-body content-stack">{children}</div>
     </dialog>
   );
 }

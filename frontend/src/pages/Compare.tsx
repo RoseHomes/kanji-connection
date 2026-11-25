@@ -84,11 +84,15 @@ export default function Compare() {
         retry={() => void groups.refetch()}
       />
       {groups.data?.length === 0 && (
-        <EmptyState title="ชุดเปรียบเทียบกำลังเตรียมพร้อม">
+        <EmptyState
+          title="ชุดเปรียบเทียบกำลังเตรียมพร้อม"
+          actions={
+            <Link className="button primary" to="/lessons">
+              เลือกบทเรียน
+            </Link>
+          }
+        >
           <p>เมื่อมีบทเรียนที่เข้าถึงได้ ชุดที่เกี่ยวข้องจะแสดงที่นี่</p>
-          <Link className="button primary" to="/lessons">
-            เลือกบทเรียน
-          </Link>
         </EmptyState>
       )}
       {!!groups.data?.length && (
@@ -106,19 +110,22 @@ export default function Compare() {
             }}
           />
           {!filtered.length && (
-            <EmptyState title="ยังไม่มีชุดในหมวดนี้">
-              <button
-                onClick={() => {
-                  setCategory("all");
-                  const next = new URLSearchParams(params);
-                  next.delete("group");
-                  next.delete("characters");
-                  setParams(next);
-                }}
-              >
-                ดูชุดทั้งหมด
-              </button>
-            </EmptyState>
+            <EmptyState
+              title="ยังไม่มีชุดในหมวดนี้"
+              actions={
+                <button
+                  onClick={() => {
+                    setCategory("all");
+                    const next = new URLSearchParams(params);
+                    next.delete("group");
+                    next.delete("characters");
+                    setParams(next);
+                  }}
+                >
+                  ดูชุดทั้งหมด
+                </button>
+              }
+            />
           )}
           <div className="comparison-layout">
             <aside className="group-directory" id="choose-groups">

@@ -209,9 +209,14 @@ export default function Quiz() {
             </Link>
           ))}
           {catalog.data?.length === 0 && (
-            <EmptyState title="แบบฝึกหัดกำลังเตรียมพร้อม">
-              <Link to="/lessons">ดูบทเรียนที่พร้อมอ่าน</Link>
-            </EmptyState>
+            <EmptyState
+              title="แบบฝึกหัดกำลังเตรียมพร้อม"
+              actions={
+                <Link className="text-link" to="/lessons">
+                  ดูบทเรียนที่พร้อมอ่าน
+                </Link>
+              }
+            />
           )}
         </div>
       ) : (
@@ -269,9 +274,11 @@ export function PracticeRound({
     <>
       {saves.saving && <p className="subtle" role="status">กำลังบันทึกคำตอบในบัญชี…</p>}
       {saves.error && (
-        <div className="notice" role="alert">
+        <div className="notice content-stack" role="alert">
           <p>คำตอบยังอยู่ในเบราว์เซอร์และรอบันทึกในบัญชี · {saves.error}</p>
-          <button onClick={() => void saves.retry()}>ลองบันทึกอีกครั้ง</button>
+          <div className="action-group">
+            <button onClick={() => void saves.retry()}>ลองบันทึกอีกครั้ง</button>
+          </div>
         </div>
       )}
     </>
@@ -376,11 +383,15 @@ export function PracticeRound({
   };
   if (!questions.length)
     return (
-      <EmptyState title="บทนี้ยังไม่มีชุดคำถามที่พร้อมเรียน">
+      <EmptyState
+        title="บทนี้ยังไม่มีชุดคำถามที่พร้อมเรียน"
+        actions={
+          <Link className="button primary" to={lessonHref}>
+            กลับบทเรียน
+          </Link>
+        }
+      >
         <p>กลับไปดูรูปและคำศัพท์ก่อน แล้วลองเลือกบทอื่นได้เสมอ</p>
-        <Link className="button primary" to={lessonHref}>
-          กลับบทเรียน
-        </Link>
       </EmptyState>
     );
   if (!question) {

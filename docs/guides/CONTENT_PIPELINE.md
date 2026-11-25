@@ -1,5 +1,8 @@
 # Structured content pipeline
 
+คู่มือสำหรับการเตรียมหมวดและ JLPT N5–N1 บน revision `0003` อยู่ใน
+[คู่มือนำเข้าเนื้อหาการเรียน (ภาษาไทย)](LEARNING_CONTENT_IMPORT_TH.md)
+
 ## Active editorial working edition
 
 When the final v2 overlay is available locally, `scripts/build_book.py` builds

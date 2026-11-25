@@ -4,6 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { api } from "../api";
 import {
   DataState,
+  LoadingState,
   ReadOnlyNotice,
   PrivateNotice,
   AccountGate,
@@ -26,7 +27,7 @@ export default function Review() {
   if (!ready)
     return (
       <div className="page section">
-        <p role="status">กำลังตรวจบัญชี…</p>
+        <LoadingState>กำลังตรวจบัญชี…</LoadingState>
       </div>
     );
   if (!session)
@@ -171,7 +172,7 @@ function PersonalReview() {
       ) : (
         data &&
         !error && (
-          <div className="notice">
+          <div className="notice content-stack">
             {data.length === 0 ? (
               <>
                 <h2>ยังไม่มีบัตรคันจิที่เปิดให้เข้าถึง</h2>
@@ -183,14 +184,16 @@ function PersonalReview() {
               <>
                 <h2>ยังไม่มีการ์ดที่ถึงกำหนด 🌱</h2>
                 <p>กลับมาทบทวนอีกครั้งตามกำหนด หรือฝึกชุดนี้ซ้ำได้</p>
-                <button
-                  onClick={() => {
-                    setQueue(data.map((k) => k.character));
-                    setRevealed(false);
-                  }}
-                >
-                  <RotateCcw size={16} /> ฝึกอีกครั้ง
-                </button>
+                <div className="action-group">
+                  <button
+                    onClick={() => {
+                      setQueue(data.map((k) => k.character));
+                      setRevealed(false);
+                    }}
+                  >
+                    <RotateCcw size={16} /> ฝึกอีกครั้ง
+                  </button>
+                </div>
               </>
             )}
           </div>

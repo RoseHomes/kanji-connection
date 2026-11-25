@@ -101,7 +101,7 @@ export function Turnstile({
   }, [siteKey, onToken, retry]);
 
   return (
-    <div>
+    <div className="content-stack">
       <div ref={container} />
       <p role="status" className="subtle">
         {status === "loading" && "กำลังโหลดการตรวจสอบความปลอดภัย…"}
@@ -110,15 +110,17 @@ export function Turnstile({
         {status === "retry" && "การตรวจสอบหมดอายุหรือยังไม่พร้อมใช้งาน กรุณาลองใหม่"}
       </p>
       {status === "retry" && (
-        <button
-          type="button"
-          onClick={() => {
-            setStatus("loading");
-            setRetry((value) => value + 1);
-          }}
-        >
-          เริ่มการตรวจสอบใหม่
-        </button>
+        <div className="action-group">
+          <button
+            type="button"
+            onClick={() => {
+              setStatus("loading");
+              setRetry((value) => value + 1);
+            }}
+          >
+            เริ่มการตรวจสอบใหม่
+          </button>
+        </div>
       )}
     </div>
   );

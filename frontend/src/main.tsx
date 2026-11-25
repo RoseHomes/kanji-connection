@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { LazyMotion, MotionConfig } from "motion/react";
 import { Reveal } from "./ui";
+import { LoadingState } from "./components";
 import Home from "./pages/Home";
 import "./styles.css";
 import { AuthProvider, useAuth } from "./auth";
@@ -125,8 +126,8 @@ function App() {
       <main id="main" tabIndex={-1}>
         <Suspense
           fallback={
-            <div className="page">
-              <p role="status">กำลังเปิดหน้า…</p>
+            <div className="page section">
+              <LoadingState>กำลังเปิดหน้า…</LoadingState>
             </div>
           }
         >
@@ -165,9 +166,11 @@ function App() {
               <Route
                 path="*"
                 element={
-                  <div className="page section">
+                  <div className="page section content-stack">
                     <h1>ไม่พบหน้านี้</h1>
-                    <Link to="/">กลับหน้าแรก</Link>
+                    <div className="action-group">
+                      <Link className="text-link" to="/">กลับหน้าแรก</Link>
+                    </div>
                   </div>
                 }
               />

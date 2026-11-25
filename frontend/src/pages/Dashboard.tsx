@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api } from "../api";
-import { DataState, ReadOnlyNotice, AccountGate } from "../components";
+import { DataState, LoadingState, ReadOnlyNotice, AccountGate } from "../components";
 import type { Health, Kanji } from "../types";
 import { AudioText, KanjiReadingList } from "../lesson-audio";
 import { AnswerHistoryItem } from "../answer-history";
@@ -56,7 +56,7 @@ export default function Dashboard() {
   if (!ready)
     return (
       <div className="page section">
-        <p role="status">กำลังตรวจบัญชี…</p>
+        <LoadingState>กำลังตรวจบัญชี…</LoadingState>
       </div>
     );
   if (!session)
@@ -297,7 +297,7 @@ function PersonalDashboard() {
         {lessons.data?.length === 0 && <p>ยังไม่มีบทที่เปิดให้ฝึกในบัญชีนี้</p>}
       </section>
       {session && (
-        <section className="notice sync-panel">
+        <section className="notice sync-panel content-stack">
           <h2>นำข้อมูลผู้เยี่ยมชมเข้าบัญชี</h2>
           <p>
             ตรวจข้อมูลก่อนส่ง และเลือกข้อมูลที่ต้องการเก็บเมื่อมีทั้งสองฝั่ง
@@ -334,7 +334,7 @@ function PersonalDashboard() {
                 </p>
               )}
               {preview.rows.map((row) => (
-                <fieldset key={row.key}>
+                <fieldset className="content-stack" key={row.key}>
                   <legend>{syncLabel(row.key)}</legend>
                   {row.kind === "review" && row.key.startsWith("review:") && (
                     <ReviewCardAudio character={row.key.slice(7)} />
@@ -343,7 +343,7 @@ function PersonalDashboard() {
                     <p>ในเครื่อง: {syncValue(row.kind, row.guest)}</p>
                     <p>บัญชี: {syncValue(row.kind, row.cloud)}</p>
                   </div>
-                  <label>
+                  <label className="sync-choice">
                     <input
                       type="radio"
                       name={row.key}
@@ -351,11 +351,13 @@ function PersonalDashboard() {
                       onChange={() =>
                         setChoices({ ...choices, [row.key]: "guest" })
                       }
-                    />{" "}
-                    ใช้ข้อมูลในเครื่อง
-                    {row.kind === "attempt" && " (ตรวจคำตอบใหม่โดยเซิร์ฟเวอร์)"}
+                    />
+                    <span>
+                      ใช้ข้อมูลในเครื่อง
+                      {row.kind === "attempt" && " (ตรวจคำตอบใหม่โดยเซิร์ฟเวอร์)"}
+                    </span>
                   </label>
-                  <label>
+                  <label className="sync-choice">
                     <input
                       type="radio"
                       name={row.key}
@@ -363,26 +365,28 @@ function PersonalDashboard() {
                       onChange={() =>
                         setChoices({ ...choices, [row.key]: "cloud" })
                       }
-                    />{" "}
-                    เก็บข้อมูลบัญชี
+                    />
+                    <span>เก็บข้อมูลบัญชี</span>
                   </label>
                 </fieldset>
               ))}
-              <button
-                className="primary"
-                disabled={
-                  busy ||
-                  readOnly ||
-                  preview.rows.length === 0 ||
-                  preview.rows.some((r) => !choices[r.key])
-                }
-                onClick={() => void sync()}
-              >
-                ยืนยันตัวเลือกและซิงก์
-              </button>
-              <button disabled={busy} onClick={() => setPreview(null)}>
-                ยกเลิก
-              </button>
+              <div className="action-group">
+                <button
+                  className="primary"
+                  disabled={
+                    busy ||
+                    readOnly ||
+                    preview.rows.length === 0 ||
+                    preview.rows.some((r) => !choices[r.key])
+                  }
+                  onClick={() => void sync()}
+                >
+                  ยืนยันตัวเลือกและซิงก์
+                </button>
+                <button disabled={busy} onClick={() => setPreview(null)}>
+                  ยกเลิก
+                </button>
+              </div>
             </>
           )}
         </section>

@@ -56,9 +56,9 @@ export default function Catalog() {
               ? "ยังไม่มีบทในกลุ่มนี้"
               : "บทเรียนสาธารณะกำลังเตรียมพร้อม"
           }
+          actions={<button onClick={() => setParams({})}>ดูทุกหมวด</button>}
         >
           <p>เนื้อหาจะเปิดให้อ่านเมื่อพร้อมเรียน ลองเลือกหมวดอื่นหรือกลับมาใหม่ได้เสมอ</p>
-          <button onClick={() => setParams({})}>ดูทุกหมวด</button>
         </EmptyState>
       )}
       <div className="lesson-grid">

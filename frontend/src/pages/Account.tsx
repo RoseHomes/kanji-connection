@@ -4,6 +4,7 @@ import { supabase } from "../supabase";
 import { useAuth } from "../auth";
 import { Turnstile } from "../Turnstile";
 import { passwordIssue } from "../password-policy";
+import { LoadingState } from "../components";
 
 type Mode = "login" | "signup" | "reset";
 type AuthFailure = { status?: number; code?: string };
@@ -133,7 +134,7 @@ export default function Account() {
           กลับไปเรียนโดยไม่เข้าสู่ระบบ →
         </Link>
       </aside>
-      <section className="account-panel">
+      <section className="account-panel content-stack">
         <p className="eyebrow">YOUR LEARNING SPACE</p>
         <h1>
           {recoveringPassword
@@ -147,7 +148,7 @@ export default function Account() {
                   : "ยินดีต้อนรับกลับ"}
         </h1>
         {!ready ? (
-          <p role="status">กำลังตรวจบัญชี…</p>
+          <LoadingState>กำลังตรวจบัญชี…</LoadingState>
         ) : session ? (
           <SignedInAccount
             key={session.user.id}
@@ -167,7 +168,7 @@ export default function Account() {
               onSubmit={(event) => void submit(event)}
               className="learning-form"
             >
-              <label>
+              <label className="form-field">
                 อีเมล
                 <input
                   type="email"
@@ -178,7 +179,7 @@ export default function Account() {
                 />
               </label>
               {!reset && (
-                <label>
+                <label className="form-field">
                   รหัสผ่าน
                   <input
                     type="password"
@@ -339,9 +340,9 @@ function SignedInAccount({
 
   return (
     <>
-      <div className="notice">
+      <div className="notice content-stack">
         <p>{email}</p>
-        <div className="hero-actions">
+        <div className="action-group">
           {!recovering && (
             <Link className="button primary" to="/dashboard">
               ดูความก้าวหน้า
@@ -369,7 +370,7 @@ function SignedInAccount({
           onSubmit={(event) => void updatePassword(event)}
         >
           {!recovering && (
-            <label>
+            <label className="form-field">
               รหัสผ่านปัจจุบัน
               <input
                 type="password"
@@ -380,7 +381,7 @@ function SignedInAccount({
               />
             </label>
           )}
-          <label>
+          <label className="form-field">
             รหัสผ่านใหม่
             <input
               type="password"
